@@ -22,7 +22,7 @@
       "preload.js",
       "renderer/**/*"
     ],
-    "mac": { "category": "public.app-category.video" },
+    "mac": { "category": "public.app-category.video", "target": ["dmg", "zip"] },
     "win": { "target": "nsis" }
   }
 }
