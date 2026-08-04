@@ -6,24 +6,53 @@ picker) → Publish (metadata review, quota pre-flight, upload progress) → Ren
 
 ## Status
 
-This is a **UI recreation** of the design handoff (`design_handoff_mytube_app/`),
-built as a real Electron app rather than the standalone HTML prototype. Layout,
-copy, tokens, and interaction behavior are recreated pixel-for-pixel per the
-handoff spec.
+The Editor's live in-app preview is still a CSS/canvas mock — same as before. But the
+actual publish path is now real, not simulated:
 
-The backend pieces the handoff describes as real integrations are **mocked here**,
-matching the prototype's own simulated behavior:
-- **Composition preview** — CSS/canvas mock in the Editor stage (Backdrop / Vinyl /
-  Waveform / Minimal), not the real render pipeline.
-- **YouTube publish** — simulated upload progress, including the
-  connection-dropped → resumed-from-offset recovery message, but no real network
-  call or OAuth.
-- **Quota tracking** — in-memory only, resets on relaunch.
-- **Render queue** — one track's progress ticks up on a timer; nothing is actually
-  rendered.
+- **Video rendering is real.** Hitting Publish opens a hidden Electron window that
+  renders the composition (Backdrop/Vinyl/Waveform/Minimal) to a `<canvas>`, driven by
+  a live Web Audio `AnalyserNode` reading the real dropped audio file (so the EQ bars
+  react to the actual track, not a fake keyframe loop). It's captured via
+  `MediaRecorder`, then muxed with the original audio at full quality via
+  `ffmpeg-static` into a real `.mp4`, saved to `~/Movies/MyTube/`. Rendering is
+  real-time (captured at normal playback speed) — a 4-minute song takes about 4
+  minutes to render, not the instant fake progress bar from before.
+- **YouTube publish is real.** OAuth device-code flow (no embedded browser or client
+  secret exposure needed), a real resumable upload to the YouTube Data API v3 with
+  actual chunked PUT + drop/resume-from-offset recovery (the "connection dropped"
+  message is now a real retry path, not a scripted one), and a real video URL back.
+- **Quota tracking is real**, using YouTube's actual published per-operation costs —
+  1600 units for the video upload alone, not the prototype's fictional ~100. Default
+  daily project quota is 10,000 units, so **expect roughly 4-5 real publishes per day**
+  (fewer with captions), not the ~20-90 the original mock implied. Persisted to disk,
+  resets at Pacific midnight.
 
-Wiring these to real modules (`YouTubeUploadClient`, `QuotaTracker`, a real
-compositions/render pipeline, OAuth device flow) is future work, not done here.
+**Still not wired up / known simplifications:**
+- **Captions-as-lyrics** isn't real — there's no lyrics input anywhere in the app, so
+  there's nothing to upload as an SRT. The captions toggle still affects the quota
+  estimate (+400 units) but doesn't call `captions.insert`. YouTube's own auto-captions
+  still apply regardless, same as any YouTube video.
+- **Playlist item insertion isn't called** — no playlist-picker UI exists to choose a
+  target. Its 50-unit cost is still reserved in the quota estimate to stay
+  conservative rather than undercount.
+- **Thumbnail upload is best-effort** — uses the dropped cover art if present; a
+  failure there doesn't fail the whole publish.
+- **Cancel is best-effort** — it takes effect at the next render/upload checkpoint,
+  not instantly mid-chunk (see the comment in `main.js`).
+- **Render queue history is session-only** — reflects whatever's currently
+  publishing plus tracks already marked Rendered/Published; there's no persisted job
+  log across relaunches.
+
+### Setup required before any of this works
+
+1. A Google Cloud project with the YouTube Data API v3 enabled, an OAuth consent
+   screen (Testing mode, `youtube.upload` + `youtube` scopes, your own account added
+   as a test user), and an OAuth client of type **TVs and Limited Input devices**.
+2. Copy `config.example.json` to `config.local.json` (gitignored, same pattern as
+   sitecalmshade's `secrets.php`) and fill in the real `youtubeClientId` /
+   `youtubeClientSecret`.
+3. First publish attempt triggers sign-in: the app shows a code and a URL, you approve
+   in any browser, no password ever touches the app.
 
 ## Run
 
@@ -34,10 +63,17 @@ npm start
 
 ## Structure
 
-- `main.js` — Electron main process; frameless 1280×820 window.
-- `preload.js` — exposes window-control IPC (close/minimize/maximize) to the renderer.
-- `renderer/` — the app itself (`index.html`, `styles.css`, `app.js`); vanilla JS,
-  full re-render on state change, no framework/build step.
+- `main.js` — Electron main process; frameless 1280×820 window; wires up OAuth,
+  upload, quota, and render IPC handlers.
+- `preload.js` — exposes window controls, real file-path resolution, and the
+  youtube/quota/publish IPC surface to the renderer.
+- `renderer/` — the primary UI (`index.html`, `styles.css`, `app.js`) plus the hidden
+  compositor window used only during rendering (`render.html`, `render.js`,
+  `render-preload.js`). Vanilla JS, full re-render on state change, no framework.
+- `src/core/youtube/` — `oauth.js` (device flow + token storage via `safeStorage`),
+  `upload.js` (resumable upload client), `quota.js` (real unit-cost tracking).
+- `src/core/render/composer.js` — orchestrates the hidden render window and the
+  ffmpeg mux step.
 
 ## Design tokens
 

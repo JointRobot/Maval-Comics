@@ -11,8 +11,6 @@ class MyTubeApp {
     this.root = root;
     this.audio = null;
     this.nextId = 5;
-    this.uploadTimer = null;
-    this.queueTimer = null;
     this.comps = [
       { name: 'Backdrop', desc: 'Blurred art fill' },
       { name: 'Vinyl', desc: 'Spinning record' },
@@ -24,9 +22,12 @@ class MyTubeApp {
       selected: 0, comp: 0, resolution: '1080p',
       variant: 'official-audio', privacy: 'public', captions: false,
       metaTitle: '', metaDesc: '', metaDirty: false,
-      upload: 'idle', uploadedMb: 0, phase: '', phaseWarn: false,
-      quota: { upload: 3, general: 230 },
-      queueProg: 62, playing: false,
+      upload: 'idle', phase: '', phaseWarn: false, progressPct: 0,
+      publishedUrl: '', publishError: '',
+      youtubeStatus: { configured: false, signedIn: false },
+      youtubeSignInPrompt: null,
+      quotaSnapshot: null, remainingToday: null,
+      playing: false,
       tracks: [
         { id: 1, title: 'Midnight Drive', artist: 'Neon Harbor', album: 'After Hours', genre: 'synthwave', duration: '3:42', file: 'midnight-drive.flac', status: 'Rendered', composition: 'Backdrop', hue: 32 },
         { id: 2, title: 'Glass Coast', artist: 'Neon Harbor', album: 'After Hours', genre: 'synthwave', duration: '4:05', file: 'glass-coast.flac', status: 'Draft', composition: '—', hue: 210 },
@@ -36,8 +37,24 @@ class MyTubeApp {
     };
 
     this.bindEvents();
+    window.mytube.publish.onProgress((p) => this.onPublishProgress(p));
+    window.mytube.youtube.onSignInPrompt((p) => this.setState({ youtubeSignInPrompt: { ...p, waiting: true } }));
+
     this.render();
-    this.startQueueTimer();
+    this.init();
+  }
+
+  async init() {
+    const [status, remaining] = await Promise.all([
+      window.mytube.youtube.status(),
+      window.mytube.quota.remaining(this.state.captions),
+    ]);
+    this.setState({ youtubeStatus: status, remainingToday: remaining });
+  }
+
+  async refreshQuota() {
+    const remaining = await window.mytube.quota.remaining(this.state.captions);
+    this.setState({ remainingToday: remaining });
   }
 
   // ---- state ----
@@ -54,7 +71,7 @@ class MyTubeApp {
 
   selectedTrack() { return this.state.tracks[this.state.selected] || this.state.tracks[0]; }
 
-  // ---- audio ----
+  // ---- audio (live in-app preview only — uses blob: URLs, unrelated to the real render path) ----
   attachAudio(t) {
     if (this.audio) this.audio.pause();
     this.audio = t && t.audioUrl ? new Audio(t.audioUrl) : null;
@@ -79,11 +96,12 @@ class MyTubeApp {
   addTrackFromFile(file) {
     const id = this.nextId++;
     const url = URL.createObjectURL(file);
+    const realPath = window.mytube.getFilePath(file);
     const base = file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').trim();
     const title = base.replace(/\b\w/g, (c) => c.toUpperCase()) || 'Untitled';
     const track = {
       id, title, artist: 'Your Artist', album: '', genre: '', duration: '—', file: file.name,
-      status: 'Draft', composition: '—', hue: Math.floor(Math.random() * 360), audioUrl: url,
+      status: 'Draft', composition: '—', hue: Math.floor(Math.random() * 360), audioUrl: url, audioPath: realPath,
     };
     const probe = new Audio(url);
     probe.onloadedmetadata = () => {
@@ -95,13 +113,15 @@ class MyTubeApp {
     this.attachAudio(track);
   }
 
-  setArt(id, file) { this.updateTrack(id, { coverUrl: URL.createObjectURL(file) }); }
+  setArt(id, file) {
+    this.updateTrack(id, { coverUrl: URL.createObjectURL(file), coverPath: window.mytube.getFilePath(file) });
+  }
 
   handleDropFiles(files, trackId) {
     const audio = files.find((f) => f.type.startsWith('audio/'));
     const image = files.find((f) => f.type.startsWith('image/'));
     if (audio && trackId == null) this.addTrackFromFile(audio);
-    else if (audio) this.updateTrack(trackId, { audioUrl: URL.createObjectURL(audio), file: audio.name });
+    else if (audio) this.updateTrack(trackId, { audioUrl: URL.createObjectURL(audio), audioPath: window.mytube.getFilePath(audio), file: audio.name });
     if (image) {
       const cur = this.selectedTrack();
       const id = trackId != null ? trackId : (cur && cur.id);
@@ -125,62 +145,87 @@ class MyTubeApp {
     return { title, desc };
   }
 
-  fileSizeMb() { return this.state.resolution === '4K' ? 312.4 : 84.6; }
-
   openMeta(screen) {
     this.pauseAudio();
     const t = this.selectedTrack();
     const gen = this.genMeta(t, this.state.variant);
-    this.setState({ screen, metaTitle: gen.title, metaDesc: gen.desc, metaDirty: false, upload: 'idle' });
+    this.setState({ screen, metaTitle: gen.title, metaDesc: gen.desc, metaDirty: false, upload: 'idle', publishError: '' });
   }
 
-  // ---- upload simulation (mocked — see README) ----
-  startUpload() {
-    const total = this.fileSizeMb();
-    this.setState({ upload: 'uploading', uploadedMb: 0, phase: 'Creating upload session…', phaseWarn: false });
-    let dropped = false;
-    clearInterval(this.uploadTimer);
-    this.uploadTimer = setInterval(() => {
-      this.setState((s) => {
-        if (s.upload !== 'uploading') { clearInterval(this.uploadTimer); return null; }
-        let mb = s.uploadedMb;
-        if (!dropped && mb > total * 0.45) {
-          dropped = true;
-          setTimeout(() => this.setState({ phase: `Resumed from ${mb.toFixed(1)} MB — YouTube confirmed the offset`, phaseWarn: false }), 1100);
-          return { phase: 'Connection dropped — asking the session where it got to…', phaseWarn: true };
-        }
-        mb = Math.min(total, mb + 1.6 + Math.random() * 1.4);
-        if (mb >= total) {
-          clearInterval(this.uploadTimer);
-          setTimeout(() => this.setState((s2) => ({
-            upload: 'done',
-            quota: { upload: s2.quota.upload + 1, general: s2.quota.general + 100 + (s2.captions ? 400 : 0) },
-          })), 1200);
-          return { uploadedMb: total, phase: 'Processing on YouTube…', phaseWarn: false };
-        }
-        return { uploadedMb: mb, phase: `Uploading chunk ${Math.floor(mb / 8) + 1} of ${Math.ceil(total / 8)} · 8 MiB chunks`, phaseWarn: false };
-      });
-    }, 180);
+  // ---- YouTube sign-in ----
+  async beginYoutubeSignIn() {
+    if (!this.state.youtubeStatus.configured) {
+      this.setState({ publishError: "YouTube isn't configured yet — add clientId/clientSecret to config.local.json (see config.example.json)." });
+      return false;
+    }
+    this.setState({ youtubeSignInPrompt: { waiting: true } });
+    try {
+      await window.mytube.youtube.signIn();
+      this.setState({ youtubeStatus: { ...this.state.youtubeStatus, signedIn: true }, youtubeSignInPrompt: null });
+      return true;
+    } catch (err) {
+      this.setState({ youtubeSignInPrompt: null, publishError: err.message });
+      return false;
+    }
   }
 
-  cancelUpload() { clearInterval(this.uploadTimer); this.setState({ upload: 'idle' }); }
-
-  finishUpload() {
+  // ---- real publish: render -> upload -> thumbnail -> quota ----
+  async startPublish() {
     const t = this.selectedTrack();
-    this.updateTrack(t.id, { status: 'Published', composition: this.comps[this.state.comp].name });
-    this.setState({ screen: 'library', upload: 'idle' });
+    if (!t.audioPath) {
+      this.setState({ publishError: "This track has no real audio file attached (it's a demo entry) — drop an actual audio file onto it first." });
+      return;
+    }
+    if (!this.state.youtubeStatus.signedIn) {
+      const ok = await this.beginYoutubeSignIn();
+      if (!ok) return;
+    }
+
+    const s = this.state;
+    const gen = this.genMeta(t, s.variant);
+    const metaTitle = s.metaDirty ? s.metaTitle : (s.metaTitle || gen.title);
+    const metaDesc = s.metaDirty ? s.metaDesc : (s.metaDesc || gen.desc);
+    const tags = [t.artist, t.title, `${t.artist} ${t.title}`, t.album, t.genre, t.genre ? `${t.genre} music` : '', 'official audio', 'new music']
+      .filter((x) => x && x.trim()).map((x) => x.toLowerCase());
+    const compName = this.comps[s.comp].name;
+
+    this.setState({ upload: 'uploading', phase: 'Starting…', phaseWarn: false, progressPct: 0, publishError: '' });
+    try {
+      const result = await window.mytube.publish.start({
+        audioPath: t.audioPath,
+        coverPath: t.coverPath || null,
+        title: t.title,
+        artist: t.artist,
+        composition: compName,
+        resolution: s.resolution,
+        metaTitle, metaDesc, tags,
+        privacy: s.privacy,
+        captions: s.captions,
+      });
+      this.updateTrack(t.id, { status: 'Published', composition: compName });
+      await this.refreshQuota();
+      this.setState({ upload: 'done', publishedUrl: result.url });
+    } catch (err) {
+      this.setState({ upload: 'idle', phase: '', publishError: err.message });
+    }
   }
 
-  startQueueTimer() {
-    this.queueTimer = setInterval(() => {
-      this.setState((s) => (s.queueProg >= 100 ? null : { queueProg: Math.min(100, s.queueProg + 0.4) }));
-    }, 400);
+  onPublishProgress(p) {
+    const pct = p.totalBytes ? Math.min(100, Math.round((p.uploadedBytes / p.totalBytes) * 100)) : this.state.progressPct;
+    this.setState({ phase: p.phase, phaseWarn: !!p.phaseWarn, progressPct: pct, publishStage: p.stage });
+  }
+
+  cancelPublish() {
+    window.mytube.publish.cancel();
+    // Best-effort: takes effect at the next render/upload checkpoint, not mid-chunk —
+    // see the comment in main.js. The UI resets immediately either way.
+    this.setState({ upload: 'idle', phase: '' });
   }
 
   // ---- nav ----
-  goLibrary() { clearInterval(this.uploadTimer); this.pauseAudio(); this.setState({ screen: 'library', upload: 'idle' }); }
+  goLibrary() { this.pauseAudio(); this.setState({ screen: 'library', upload: 'idle' }); }
   goQueue() { this.pauseAudio(); this.setState({ screen: 'queue' }); }
-  goEditor() { clearInterval(this.uploadTimer); this.setState({ screen: 'editor', upload: 'idle' }); }
+  goEditor() { this.setState({ screen: 'editor', upload: 'idle' }); }
   openTrack(id) {
     const i = this.state.tracks.findIndex((t) => t.id === id);
     if (i < 0) return;
@@ -235,10 +280,14 @@ class MyTubeApp {
         break;
       }
       case 'pick-privacy': this.setState({ privacy: el.dataset.value }); break;
-      case 'toggle-captions': this.setState((s) => ({ captions: !s.captions })); break;
-      case 'start-upload': this.startUpload(); break;
-      case 'cancel-upload': this.cancelUpload(); break;
-      case 'finish-upload': this.finishUpload(); break;
+      case 'toggle-captions':
+        this.setState((s) => ({ captions: !s.captions }));
+        this.refreshQuota();
+        break;
+      case 'start-publish': this.startPublish(); break;
+      case 'cancel-publish': this.cancelPublish(); break;
+      case 'finish-publish': this.setState({ screen: 'library', upload: 'idle', publishedUrl: '' }); break;
+      case 'dismiss-error': this.setState({ publishError: '' }); break;
       default: break;
     }
   }
@@ -287,22 +336,24 @@ class MyTubeApp {
   template() {
     const s = this.state;
     const t = this.selectedTrack();
-    const cost = 100 + (s.captions ? 400 : 0);
-    const remaining = Math.max(0, Math.min(100 - s.quota.upload, Math.floor((10000 - s.quota.general) / cost)));
+    const remaining = s.remainingToday;
     const compName = this.comps[s.comp].name;
 
     return `
       ${this.topbar(remaining)}
       ${s.screen === 'library' ? this.libraryScreen() : ''}
       ${s.screen === 'editor' ? this.editorScreen(t, compName) : ''}
-      ${s.screen === 'publish' ? this.publishScreen(t, remaining, cost) : ''}
+      ${s.screen === 'publish' ? this.publishScreen(t, remaining) : ''}
       ${s.screen === 'queue' ? this.queueScreen() : ''}
+      ${this.signInOverlay()}
     `;
   }
 
   topbar(remaining) {
     const s = this.state;
     const libActive = s.screen !== 'queue';
+    const q = s.quotaSnapshot;
+    const low = remaining != null && remaining <= 1;
     return `
       <div class="topbar">
         <div class="wordmark">MyTube</div>
@@ -312,10 +363,10 @@ class MyTubeApp {
         </div>
         <div class="spacer"></div>
         <div class="quota">
-          <span class="quota-dot${remaining < 10 ? ' low' : ''}"></span>
-          <span>uploads ${s.quota.upload}/100 · api ${Number(s.quota.general).toLocaleString()}/10,000</span>
+          <span class="quota-dot${low ? ' low' : ''}"></span>
+          <span>${s.youtubeStatus.signedIn ? 'signed in' : 'not signed in'}</span>
           <span class="quota-sep">·</span>
-          <span>${remaining} publishes left today</span>
+          <span>${remaining == null ? '…' : remaining} publishes left today</span>
         </div>
       </div>
     `;
@@ -380,8 +431,6 @@ class MyTubeApp {
       `;
     }).join('');
 
-    const renderEstimate = s.resolution === '4K' ? '~11 min · 312 MB' : '~4 min · 85 MB';
-
     return `
       <div class="screen-editor">
         <div class="editor-main">
@@ -417,6 +466,7 @@ class MyTubeApp {
             <div class="section-label">Source</div>
             <div class="rail-file">${esc(t.file)}</div>
             <div class="rail-file-sub">${esc(t.duration)} · ${esc((t.file.split('.').pop() || '').toLowerCase())}</div>
+            ${!t.audioPath ? '<div class="rail-file-sub" style="color:#b0813a;margin-top:6px;">Demo entry — no real audio file, can\'t actually be rendered/published.</div>' : ''}
           </div>
           <div>
             <div class="section-label">Resolution</div>
@@ -426,9 +476,9 @@ class MyTubeApp {
             </div>
           </div>
           <div>
-            <div class="section-label">Estimated render</div>
-            <div class="estimate">${renderEstimate}</div>
-            <div class="estimate-sub">The preview is the render — what you see is the exported file.</div>
+            <div class="section-label">Render time</div>
+            <div class="estimate">≈ ${esc(t.duration)} (real-time capture)</div>
+            <div class="estimate-sub">The preview is the render — the composition module renders live, the same way it plays here.</div>
           </div>
           <div class="rail-spacer"></div>
           <button class="btn-primary" data-action="go-publish">Continue to publish →</button>
@@ -437,7 +487,7 @@ class MyTubeApp {
     `;
   }
 
-  publishScreen(t, remaining, cost) {
+  publishScreen(t, remaining) {
     const s = this.state;
     const gen = this.genMeta(t, s.variant);
     const metaTitle = s.metaDirty ? s.metaTitle : (s.metaTitle || gen.title);
@@ -446,8 +496,6 @@ class MyTubeApp {
       .filter((x) => x && x.trim()).map((x) => x.toLowerCase());
     const tagChars = tags.reduce((a, x) => a + x.length + 1, 0);
     const hashtags = gen.desc.split('\n\n').pop();
-    const total = this.fileSizeMb();
-    const pct = Math.round((s.uploadedMb / total) * 100);
 
     const variants = [['plain', 'Plain'], ['official-audio', 'Official Audio'], ['lyrics', 'Lyrics'], ['visualizer', 'Visualizer']];
     const variantChips = variants.map(([id, label]) => `
@@ -461,6 +509,12 @@ class MyTubeApp {
       <button class="chip${s.privacy === id ? ' active' : ''}" data-action="pick-privacy" data-value="${id}">${esc(label)}</button>
     `).join('');
 
+    const errorBox = s.publishError ? `
+      <div class="warnings-box" style="border-color:#e3b3a8;background:#fbeeea;margin-bottom:12px;">
+        <div class="warning-line" style="color:#b0483a;">${esc(s.publishError)}</div>
+      </div>
+    ` : '';
+
     let railContent;
     if (s.upload === 'idle') {
       railContent = `
@@ -469,9 +523,9 @@ class MyTubeApp {
           <div class="chip-row">${privacyChips}</div>
         </div>
         <div>
-          <div class="section-label">This publish costs</div>
+          <div class="section-label">This publish costs (real YouTube API units)</div>
           <div class="cost-list">
-            <div class="cost-row"><span>Video upload</span><span class="cost-val">1 upload</span></div>
+            <div class="cost-row"><span>Video upload</span><span class="cost-val">1600 units</span></div>
             <div class="cost-row"><span>Thumbnail</span><span class="cost-val">50 units</span></div>
             <div class="cost-row"><span>Playlist item</span><span class="cost-val">50 units</span></div>
             <div class="captions-row" data-action="toggle-captions">
@@ -480,21 +534,22 @@ class MyTubeApp {
             </div>
           </div>
           <div class="remaining-note">
-            After this publish: <strong>${Math.max(0, remaining - 1)}</strong> more like it today.
-            ${s.captions ? '<div class="remaining-warn">Captions drop your daily ceiling from ~100 to ~20 publishes.</div>' : ''}
+            After this publish: <strong>${remaining == null ? '…' : Math.max(0, remaining - 1)}</strong> more like it today.
+            <div style="margin-top:6px;">Daily project quota is 10,000 units — a real publish costs 1700-2100 units, so only a handful fit per day.</div>
+            ${s.captions ? '<div class="remaining-warn">Captions on: costs 2100 units, not 1700.</div>' : ''}
           </div>
         </div>
         <div class="rail-spacer"></div>
-        <button class="btn-primary" data-action="start-upload">Publish · ${total.toFixed(1)} MB</button>
+        <button class="btn-primary" data-action="start-publish" ${!t.audioPath ? 'disabled style="opacity:.5;cursor:not-allowed;"' : ''}>Publish</button>
       `;
     } else if (s.upload === 'uploading') {
       railContent = `
         <div class="upload-block">
-          <div class="section-label">Uploading</div>
-          <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
-          <div class="progress-row"><span>${s.uploadedMb.toFixed(1)} / ${total.toFixed(1)} MB</span><span>${pct}%</span></div>
+          <div class="section-label">${s.publishStage === 'upload' ? 'Uploading' : 'Rendering'}</div>
+          <div class="progress-track"><div class="progress-fill" style="width:${s.progressPct}%"></div></div>
+          <div class="progress-row"><span>${s.progressPct}%</span></div>
           <div class="phase-line${s.phaseWarn ? ' warn' : ''}">${esc(s.phase)}</div>
-          <button class="btn-cancel" data-action="cancel-upload">Cancel</button>
+          <button class="btn-cancel" data-action="cancel-publish">Cancel</button>
         </div>
       `;
     } else {
@@ -503,8 +558,8 @@ class MyTubeApp {
           <div class="done-badge">✓</div>
           <div class="done-title">Published</div>
           <div class="done-summary">${esc(metaTitle)} is live as <strong>${esc(s.privacy)}</strong>.</div>
-          <div class="done-url">youtu.be/vid_mt_0413</div>
-          <button class="btn-secondary" data-action="finish-upload">Back to library</button>
+          <div class="done-url"><a href="#" onclick="return false" style="color:inherit;">${esc(s.publishedUrl)}</a></div>
+          <button class="btn-secondary" data-action="finish-publish">Back to library</button>
         </div>
       `;
     }
@@ -517,6 +572,7 @@ class MyTubeApp {
             <div class="publish-header-title">Publish to YouTube</div>
             <div class="publish-header-sub">metadata generated — review before publishing</div>
           </div>
+          ${errorBox}
           <div class="publish-form">
             <div>
               <div class="field-label-row">
@@ -543,7 +599,7 @@ class MyTubeApp {
             </div>
             ${!s.captions ? `
               <div class="warnings-box">
-                <div class="warning-line">Lyrics captions are off — turning them on costs 400 units (drops daily ceiling to ~20 publishes).</div>
+                <div class="warning-line">Lyrics captions are off — turning them on costs 400 more units.</div>
               </div>
             ` : ''}
           </div>
@@ -555,35 +611,58 @@ class MyTubeApp {
 
   queueScreen() {
     const s = this.state;
-    const queue = [
-      { title: 'Midnight Drive', detail: 'Backdrop · 1080p · 3:42', status: 'Done', prog: 100, hue: 32 },
-      { title: 'Static Bloom', detail: 'Vinyl · 1080p · 2:58', status: 'Rendering', prog: s.queueProg, hue: 140 },
-      { title: 'Low Orbit', detail: 'Waveform · 4K · 5:21', status: 'Queued', prog: 0, hue: 275 },
-    ];
-    const rows = queue.map((q) => `
-      <div class="queue-row">
-        <div class="cover" style="width:40px;height:40px;border-radius:6px;${this.cover(q.hue)}"></div>
-        <div class="queue-main">
-          <div class="track-title">${esc(q.title)}</div>
-          <div class="queue-detail">${esc(q.detail)}</div>
-        </div>
-        <div class="queue-bar-wrap">
-          <div class="queue-bar-track">
-            <div class="queue-bar-fill" style="width:${q.prog}%;background:${q.status === 'Done' ? '#3d7a4e' : '#1a1917'}"></div>
+    const active = s.upload === 'uploading' ? this.selectedTrack() : null;
+    const rows = s.tracks
+      .filter((tr) => tr.status !== 'Draft' || tr.id === (active && active.id))
+      .map((tr) => {
+        const isActive = active && tr.id === active.id;
+        const status = isActive ? (s.publishStage === 'upload' ? 'Uploading' : 'Rendering') : tr.status;
+        const prog = isActive ? s.progressPct : (tr.status === 'Published' || tr.status === 'Rendered' ? 100 : 0);
+        return `
+          <div class="queue-row">
+            <div class="cover" style="width:40px;height:40px;border-radius:6px;${this.cover(tr.hue, tr.coverUrl)}"></div>
+            <div class="queue-main">
+              <div class="track-title">${esc(tr.title)}</div>
+              <div class="queue-detail">${esc(tr.composition)} · ${esc(tr.duration)}</div>
+            </div>
+            <div class="queue-bar-wrap">
+              <div class="queue-bar-track">
+                <div class="queue-bar-fill" style="width:${prog}%;background:${prog >= 100 ? '#3d7a4e' : '#1a1917'}"></div>
+              </div>
+            </div>
+            <div class="status-pill" style="${this.statusStyle(status)}">${esc(status)}</div>
           </div>
-        </div>
-        <div class="status-pill" style="${this.statusStyle(q.status)}">${esc(q.status)}</div>
-      </div>
-    `).join('');
+        `;
+      }).join('');
 
     return `
       <div class="screen-queue">
         <div class="screen-title-row">
           <h1>Render queue</h1>
-          <span class="count">1 rendering · 1 queued · 1 done</span>
+          <span class="count">${rows ? '' : 'nothing rendered yet'}</span>
         </div>
-        <div class="track-list">${rows}</div>
+        <div class="track-list">${rows || '<div style="padding:24px 0;color:#8a867e;font-size:13px;">Publish a track to see it here.</div>'}</div>
         <div class="queue-footer">Renders run one at a time in a hidden window — the same composition module as the preview.</div>
+      </div>
+    `;
+  }
+
+  signInOverlay() {
+    const p = this.state.youtubeSignInPrompt;
+    if (!p) return '';
+    const body = p.userCode
+      ? `
+        <div style="font-size:13px;color:#55524b;margin-bottom:14px;">Go to <strong>${esc(p.verificationUrl)}</strong> and enter this code:</div>
+        <div style="font-family:ui-monospace,Menlo,monospace;font-size:28px;font-weight:700;letter-spacing:.08em;text-align:center;background:#efedea;border-radius:8px;padding:14px;margin-bottom:14px;">${esc(p.userCode)}</div>
+        <div style="font-size:12px;color:#8a867e;">Waiting for approval…</div>
+      `
+      : `<div style="font-size:13px;color:#55524b;">Starting sign-in…</div>`;
+    return `
+      <div style="position:fixed;inset:0;background:rgba(20,19,17,.5);display:flex;align-items:center;justify-content:center;z-index:1000;">
+        <div style="width:380px;background:#fdfcfb;border-radius:12px;padding:28px;box-shadow:0 20px 50px rgba(0,0,0,.3);">
+          <div style="font-size:15px;font-weight:600;margin-bottom:14px;">Sign in to YouTube</div>
+          ${body}
+        </div>
       </div>
     `;
   }
