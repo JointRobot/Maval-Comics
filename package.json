@@ -23,7 +23,13 @@
       "renderer/**/*"
     ],
     "afterPack": "scripts/afterPack.js",
-    "mac": { "category": "public.app-category.video", "target": ["dmg", "zip"] },
+    "mac": {
+      "category": "public.app-category.video",
+      "target": [
+        { "target": "dmg", "arch": ["x64"] },
+        { "target": "zip", "arch": ["x64"] }
+      ]
+    },
     "win": { "target": "nsis" }
   }
 }
