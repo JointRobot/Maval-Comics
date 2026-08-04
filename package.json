@@ -1,0 +1,28 @@
+{
+  "name": "mytube",
+  "productName": "MyTube",
+  "version": "0.1.0",
+  "description": "Turns a song + cover art into a finished music video and publishes it to YouTube.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win"
+  },
+  "author": "",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.mytube.app",
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*"
+    ],
+    "mac": { "category": "public.app-category.video" },
+    "win": { "target": "nsis" }
+  }
+}
