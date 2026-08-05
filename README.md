@@ -27,6 +27,9 @@ actual publish path is now real, not simulated:
   (fewer with captions), not the ~20-90 the original mock implied. Persisted to disk,
   resets at Pacific midnight.
 
+This whole path has been exercised end-to-end for real (sign-in → render → resumable
+upload → live video URL back), not just unit-tested in isolation.
+
 **Still not wired up / known simplifications:**
 - **Captions-as-lyrics** isn't real — there's no lyrics input anywhere in the app, so
   there's nothing to upload as an SRT. The captions toggle still affects the quota
@@ -48,9 +51,15 @@ actual publish path is now real, not simulated:
 1. A Google Cloud project with the YouTube Data API v3 enabled, an OAuth consent
    screen (Testing mode, `youtube.upload` + `youtube` scopes, your own account added
    as a test user), and an OAuth client of type **TVs and Limited Input devices**.
-2. Copy `config.example.json` to `config.local.json` (gitignored, same pattern as
-   sitecalmshade's `secrets.php`) and fill in the real `youtubeClientId` /
-   `youtubeClientSecret`.
+2. Credentials go in a `config.json` with `youtubeClientId` / `youtubeClientSecret`
+   (see `config.example.json` for the shape) — **not** inside the app bundle, since
+   `app.asar` is read-only once packaged. The real location is Electron's per-user
+   data directory:
+   - macOS: `~/Library/Application Support/MyTube/config.json`
+   - Windows: `%APPDATA%/MyTube/config.json`
+
+   For local dev (`npm start` from source), a `config.local.json` next to the source
+   is also checked and is gitignored — same pattern as sitecalmshade's `secrets.php`.
 3. First publish attempt triggers sign-in: the app shows a code and a URL, you approve
    in any browser, no password ever touches the app.
 

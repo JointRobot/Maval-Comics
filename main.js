@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
-const config = require('./config');
+const loadConfig = require('./config');
 const { YouTubeAuth } = require('./src/core/youtube/oauth');
 const { YouTubeUploadClient } = require('./src/core/youtube/upload');
 const { QuotaTracker } = require('./src/core/youtube/quota');
@@ -29,6 +29,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  const config = loadConfig(app.getPath('userData'));
   auth = new YouTubeAuth(config.youtubeClientId, config.youtubeClientSecret);
   quota = new QuotaTracker();
   uploadClient = new YouTubeUploadClient(() => auth.getAccessToken());
@@ -47,7 +48,7 @@ app.whenReady().then(() => {
 
   ipcMain.handle('youtube:signIn', async (e) => {
     if (!auth.isConfigured()) {
-      throw new Error("YouTube isn't configured yet — add clientId/clientSecret to config.local.json");
+      throw new Error(`YouTube isn't configured yet — add clientId/clientSecret to ${path.join(app.getPath('userData'), 'config.json')}`);
     }
     await auth.signIn((prompt) => {
       BrowserWindow.fromWebContents(e.sender)?.webContents.send('youtube:signin-prompt', prompt);
