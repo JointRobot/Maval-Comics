@@ -15,7 +15,7 @@
     "ffmpeg-static": "^5.2.0"
   },
   "devDependencies": {
-    "electron": "^32.0.0",
+    "electron": "^31.0.0",
     "electron-builder": "^24.13.3"
   },
   "build": {
@@ -32,6 +32,9 @@
     "afterPack": "scripts/afterPack.js",
     "mac": {
       "category": "public.app-category.video",
+      "extendInfo": {
+        "NSQuitAlwaysKeepsWindows": false
+      },
       "target": [
         { "target": "dmg", "arch": ["x64"] },
         { "target": "zip", "arch": ["x64"] }

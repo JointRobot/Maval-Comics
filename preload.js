@@ -1,13 +1,13 @@
-const { contextBridge, ipcRenderer, webUtils } = require('electron');
+const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('mytube', {
   windowClose: () => ipcRenderer.send('window:close'),
   windowMinimize: () => ipcRenderer.send('window:minimize'),
   windowMaximize: () => ipcRenderer.send('window:maximize'),
 
-  // File objects from <input type=file> / drag-drop don't carry a filesystem path across
-  // the context-isolation boundary on their own — webUtils resolves it explicitly.
-  getFilePath: (file) => webUtils.getPathForFile(file),
+  // Electron attaches a real filesystem path to File objects from <input type=file> /
+  // drag-drop (an Electron-specific extension over the web File API).
+  getFilePath: (file) => file.path,
 
   youtube: {
     status: () => ipcRenderer.invoke('youtube:status'),
