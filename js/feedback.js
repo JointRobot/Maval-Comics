@@ -12,6 +12,7 @@ const KINDS = [['bug', '🐛', 'Something’s broken'], ['annoying', '😤', 'An
 const MOODS = ['😡', '😕', '😐', '🙂', '🤩'];
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 const canRecord = !!(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
+const MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent); // live captions fight the recorder for the mic on phones, so they stay desktop-only
 
 function deviceInfo() {
   const ua = navigator.userAgent || '';
@@ -41,10 +42,12 @@ export function openFeedback({ screen } = {}) {
       <p class="fbsub">Bug? Idea? Rant? Love letter? Tap the mic and just talk. 20 seconds is plenty. Maval Comics reads every one.</p>
 
       <div class="fbmic" id="fbMic">
-        ${!canRecord ? `<p class="fbhint">Voice notes aren’t available in this browser. No stress, type it below 👇</p>`
+        ${!canRecord ? `<p class="fbhint">Voice notes aren’t available in this browser. Use your phone’s recorder, or type it below 👇</p><button class="chip" id="fbPick">📱 USE PHONE RECORDER</button>`
         : blob ? `<audio controls src="${blobUrl}" preload="metadata"></audio><button class="fbredo" id="fbRedo">🔁 re-record</button>`
         : mr ? `<button class="micbtn rec" id="fbStop" aria-label="Stop recording"><i></i></button><canvas id="fbWave" width="240" height="40"></canvas><p class="fbtime" id="fbTime">${mmss(secs)} / ${mmss(MAX_SEC)} · tap to stop</p>`
-        : `<button class="micbtn" id="fbRec" aria-label="Start recording">🎙️</button><p class="fbtime">TAP &amp; TALK</p>`}
+        : `<button class="micbtn" id="fbRec" aria-label="Start recording">🎙️</button><p class="fbtime" id="fbTime">TAP &amp; TALK</p>`}
+        ${!blob && !mr && canRecord ? `<button class="link" id="fbPick" style="color:var(--ink);font-size:12px">mic not working? use your phone’s recorder</button>` : ''}
+        <input type="file" id="fbFile" accept="audio/*" capture hidden>
         <p class="fberr" id="fbErr"></p>
       </div>
 
@@ -56,12 +59,18 @@ export function openFeedback({ screen } = {}) {
 
       ${blob ? `<label class="fbtog"><input type="checkbox" id="fbVoice" checked> Send my voice too <small>(auto-deleted after 30 days)</small></label>` : ''}
       <button class="btn pink" id="fbSend" disabled>SEND IT 🚀</button>
-      <p class="fbfine">We attach: the screen you’re on, phone/browser type, app version. No phone number. No location.${SR && canRecord ? ' Live captions use your browser’s speech service.' : ''}</p>
+      <p class="fbfine">We attach: the screen you’re on, phone/browser type, app version. No phone number. No location.${SR && canRecord && !MOBILE ? ' Live captions use your browser’s speech service.' : ''}</p>
       <p class="fbcredit">${esc(CONFIG.credit)}</p>
     </div>`;
     const ta = o.querySelector('#fbText'); ta.value = keep; refresh();
     o.querySelector('#fbClose').onclick = close;
     o.querySelector('#fbRec')?.addEventListener('click', startRec);
+    o.querySelector('#fbPick')?.addEventListener('click', () => o.querySelector('#fbFile').click());
+    o.querySelector('#fbFile')?.addEventListener('change', e => {
+      const f = e.target.files?.[0]; if (!f) return;
+      if (f.size > 380000) return setErr('That recording is too long. Keep it under about 20 seconds, or type it.');
+      mime = f.type || 'audio/mp4'; blob = f; blobUrl = URL.createObjectURL(f); capText = ''; paint();
+    });
     o.querySelector('#fbStop')?.addEventListener('click', () => stopRec(false));
     o.querySelector('#fbRedo')?.addEventListener('click', () => { if (blobUrl) URL.revokeObjectURL(blobUrl); blob = null; blobUrl = ''; capText = ''; paint(); });
     o.querySelector('#fbKinds').onclick = e => { const b = e.target.closest('[data-k]'); if (!b) return; kind = kind === b.dataset.k ? null : b.dataset.k; play('tap'); o.querySelectorAll('#fbKinds .chip').forEach(c => c.classList.toggle('on', c.dataset.k === kind)); };
@@ -76,20 +85,27 @@ export function openFeedback({ screen } = {}) {
 
   // ---------------- recording ----------------
   async function startRec() {
-    setErr('');
-    try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); }
-    catch { return setErr('Couldn’t reach the mic. Allow it in your browser, or just type below.'); }
+    setErr(''); const tt = o.querySelector('#fbTime'); if (tt) tt.textContent = 'Allow the mic when your phone asks…';
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+    catch (e) {
+      if (tt) tt.textContent = 'TAP & TALK';
+      return setErr(e?.name === 'NotAllowedError' || e?.name === 'SecurityError' ? 'The mic is blocked for this site. Tap the 🔒 next to the address, set Microphone to Allow, then try again. Or use the phone recorder link below.'
+        : e?.name === 'NotFoundError' ? 'No microphone found on this device. Type it below instead.' : e?.name === 'NotReadableError' ? 'Another app is using the mic. Close it and try again.' : 'Couldn’t start the mic (' + (e?.name || 'error') + '). Try the phone recorder link below, or type it.');
+    }
     mime = pickMime() || '';
     const chunks = [];
     try { mr = new MediaRecorder(stream, mime ? { mimeType: mime, audioBitsPerSecond: 24000 } : { audioBitsPerSecond: 24000 }); }
     catch { stream.getTracks().forEach(t => t.stop()); stream = null; return setErr('This browser can’t record. Type it below instead.'); }
     mime = mr.mimeType || mime || 'audio/webm';
     mr.ondataavailable = e => e.data?.size && chunks.push(e.data);
+    mr.onerror = () => { stopRec(true); paint(); setErr('Recording stopped unexpectedly. Try again, or use the phone recorder link.'); };
     mr.onstop = () => {
       stream?.getTracks().forEach(t => t.stop()); stream = null; mr = null; cancelAnimationFrame(raf); clearInterval(timer); actx?.close?.().catch(() => {}); actx = null;
       stopCaptions();
       if (cancelled) return;
-      blob = new Blob(chunks, { type: mime.split(';')[0] || 'audio/webm' }); blobUrl = URL.createObjectURL(blob);
+      const made = new Blob(chunks, { type: mime.split(';')[0] || 'audio/webm' });
+      if (made.size < 800) { paint(); return setErr('Didn’t catch any sound. Check the mic is allowed, or use the phone recorder link below.'); }
+      blob = made; blobUrl = URL.createObjectURL(blob);
       if (capText && !keep.trim()) keep = capText.trim();
       play('pop'); paint();
     };
@@ -114,7 +130,7 @@ export function openFeedback({ screen } = {}) {
     }; loop();
   }
   function startCaptions() {
-    if (!SR) return;
+    if (!SR || MOBILE) return;
     try {
       sr = new SR(); sr.continuous = true; sr.interimResults = true; sr.lang = /^hi/i.test(navigator.language) ? 'hi-IN' : 'en-IN'; srOn = true; let fin = '';
       sr.onresult = e => { let interim = ''; for (let i = e.resultIndex; i < e.results.length; i++) { const r = e.results[i]; if (r.isFinal) fin += r[0].transcript + ' '; else interim += r[0].transcript; } capText = (fin + interim).trim(); };
