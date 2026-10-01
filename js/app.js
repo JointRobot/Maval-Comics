@@ -760,7 +760,7 @@ function boot() {
   let deb = 0; backend.on(() => { clearTimeout(deb); deb = setTimeout(refresh, 120); });
   setInterval(() => { if (!document.hidden && st && (backend.kind === 'local' || (st.hype && serverNow() < st.hype.endsAt + 6000))) refresh(); }, backend.kind === 'local' ? 2500 : 2000);
   if (backend.meId()) enterGame();
-  if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') { const had = !!navigator.serviceWorker.controller; navigator.serviceWorker.register('sw.js').catch(() => {}); let rl = false; navigator.serviceWorker.addEventListener('controllerchange', () => { if (had && !rl && !document.querySelector('.ov, .tour')) { rl = true; location.reload(); } }); }
   if (new URLSearchParams(location.search).get('mode') === 'home' && !backend.meId()) showJoin(true);
 }
 boot();
