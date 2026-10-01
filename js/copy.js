@@ -149,10 +149,10 @@ export const T = {
   homeBest: n => `Your best: ${n}`,
   homeRoach: 'NOT THE ROACH 😭',
   punchTitle: 'PUNCH',
-  punchSub: '60 seconds. Tap the bag as fast as your thumb can. Every punch counts. Highest total wins the board. Only the bag gets hurt, he’s fine.',
+  punchSub: '15 seconds. Tap the bag as fast as your thumb can. Every punch counts. Highest total wins the board. Only the bag gets hurt, he’s fine.',
   punchStart: 'GLOVES ON',
-  punchDone: n => n >= 400 ? 'Thumb of steel. Please hydrate.' : n >= 250 ? 'Okay, gym bro.' : n >= 120 ? 'Solid warm-up.' : 'Gentle. The bag felt a breeze.',
-  punchBoardNote: 'Most punches in 60 seconds. Same board for everyone, at the ground or at home.',
+  punchDone: n => n >= 100 ? 'Thumb of steel. Please hydrate.' : n >= 70 ? 'Okay, gym bro.' : n >= 40 ? 'Solid warm-up.' : 'Gentle. The bag felt a breeze.',
+  punchBoardNote: 'Most punches in 15 seconds. Same board for everyone, at the ground or at home.',
   homeBoardNote: 'At-home scores live on their own board, so the ground hunt stays fair.'
 };
 

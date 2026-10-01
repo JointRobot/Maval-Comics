@@ -70,7 +70,7 @@ function seed() {
   const fake = [['GYNUKILLER', 1240, 9, 'Soda lemon ginger pop, Gyanu bhai is a flop', 44], ['CHAIWALA', 1110, 8, 'Cutting chai, cutting Gyanu’s hiding streak', 31], ['TCHUTCHU', 980, 7, 'Go Gyanu go! (no seriously, go)', 52], ['VADAPAVKING', 720, 5, 'Unemployed? Yes. Undefeated? Also yes.', 18], ['LOCALTRAIN', 430, 3, 'Chronically online, briefly outside', 27]];
   for (const [nick, score, finds, slogan, home] of fake) {
     const id = uid('p_');
-    db.players.push({ id, nick, slogan, avatar: avatarFor(id), score, finds, streak: 0, bestStreak: 2, lastZone: ZONES[finds % ZONES.length].id, lastSubmitAt: 0, banned: false, createdAt: t, bot: true, notices: [], todayBase: score, homeBest: home, punchBest: 150 + (home * 3) % 190, lastHomeAt: 0, lastPunchAt: 0, lastSeen: 0, reports: [] });
+    db.players.push({ id, nick, slogan, avatar: avatarFor(id), score, finds, streak: 0, bestStreak: 2, lastZone: ZONES[finds % ZONES.length].id, lastSubmitAt: 0, banned: false, createdAt: t, bot: true, notices: [], todayBase: score, homeBest: home, punchBest: 40 + (home * 3) % 70, lastHomeAt: 0, lastPunchAt: 0, lastSeen: 0, reports: [] });
   }
   return db;
 }

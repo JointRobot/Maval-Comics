@@ -23,7 +23,7 @@ export const RULES = {
   // The Scene (crowd-sourced info)
   reportPoints: 5, reportCapPerHour: 6, confirmPoints: 2, sceneTTLMin: 45,
   // Whack-a-Gyanu (at home): its own board, plausibility cap per 30 s round
-  homeMaxPerRound: 90, homeCooldownSec: 20, punchMaxPerRound: 600, punchCooldownSec: 20
+  homeMaxPerRound: 90, homeCooldownSec: 20, punchMaxPerRound: 200, punchCooldownSec: 15
 };
 
 export function basePoints(order, g) {

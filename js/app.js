@@ -704,8 +704,8 @@ function startPunch() {
   intro.querySelector('#pGo').onclick = () => { intro.remove(); runPunch(); };
 }
 function runPunch() {
-  const DUR = 60000; let n = 0, t0 = 0, over = false, tick = 0;
-  const o = layer(`<div class="punchhud"><span class="chip" id="pT">⏱ 60s</span><span class="chip" id="pN" style="margin-left:auto">🥊 0</span></div>
+  const DUR = 15000; let n = 0, t0 = 0, over = false, tick = 0;
+  const o = layer(`<div class="punchhud"><span class="chip" id="pT">⏱ 15s</span><span class="chip" id="pN" style="margin-left:auto">🥊 0</span></div>
     <div class="bagwrap big2"><div class="bagrope"></div><button class="bag" id="bag" aria-label="Punch the bag"><img src="img/gyanu.svg" alt="" draggable="false"></button></div>
     <p class="small" id="pHint" style="margin-top:12px">TAP THE BAG. TIMER STARTS ON YOUR FIRST PUNCH.</p>`, 'punchov');
   const bag = o.querySelector('#bag'), N = o.querySelector('#pN'), T0 = o.querySelector('#pT');
@@ -725,7 +725,7 @@ function runPunch() {
   const finish = async () => {
     if (over) return; over = true; clearInterval(tick); o.remove();
     let r = { ok: false, reason: '' }; try { r = await backend.punchScore(n); } catch (e) { r.reason = e.message; }
-    confetti(n > 200 ? 70 : 20); play(n > 120 ? 'tada' : 'bruh');
+    confetti(n > 70 ? 70 : 20); play(n > 40 ? 'tada' : 'bruh');
     const d = layer(`<h2 class="big">${n} PUNCHES</h2><p class="d" style="font-size:20px;color:var(--pink);margin:10px 0">${esc(T.punchDone(n))}</p>
       ${r.ok ? `<p>${r.best ? '🏆 NEW PERSONAL BEST' : 'Your best: ' + r.punchBest}</p>` : `<p>${esc(r.reason)}</p>`}
       <div class="sw stack" style="margin-top:16px"><button class="btn pink" id="pA">AGAIN, OBVIOUSLY</button><button class="btn ghost" style="color:var(--ink)" id="pB">LEADERBOARD</button><button class="link" style="color:#fff" id="pC">back to the hunt</button></div>`);
