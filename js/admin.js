@@ -158,6 +158,7 @@ const wire = {
   },
   players() {
     $('#pq').oninput = e => document.querySelectorAll('#ptab tr[data-n]').forEach(r => (r.style.display = r.dataset.n.includes(e.target.value.toUpperCase()) ? '' : 'none'));
+    document.querySelectorAll('[data-pclr]').forEach(b => (b.onclick = () => act('clearSlogan', { id: b.dataset.pclr }, 'Placard removed')));
     document.querySelectorAll('[data-pban]').forEach(b => (b.onclick = () => act('ban', { id: b.dataset.pban, on: b.dataset.on === '1' }, b.dataset.on === '1' ? 'Banned' : 'Unbanned')));
   },
   settings() {
@@ -228,7 +229,7 @@ function crowd() {
 // ---------- PLAYERS / BOARD / SETTINGS
 function players() {
   return `<div class="card"><h2>PLAYERS (${S.players.length})</h2><input id="pq" placeholder="search nickname" style="max-width:300px;margin-bottom:8px">
-    <table id="ptab"><tr><th>NICK</th><th>SLOGAN</th><th>SCORE</th><th>FOUND</th><th></th></tr>${S.players.map(p => `<tr data-n="${esc(p.nick)}"><td><b>${esc(p.nick)}</b>${p.bot ? ' <span class="tag">demo</span>' : ''}${p.banned ? ' <span class="tag final">BANNED</span>' : ''}</td><td class="mut">${esc(p.slogan)}</td><td>${p.score}</td><td>${p.finds}</td><td><button class="b ${p.banned ? 'g' : 'r'} sm" data-pban="${p.id}" data-on="${p.banned ? 0 : 1}">${p.banned ? 'UNBAN' : 'BAN'}</button></td></tr>`).join('')}</table>
+    <table id="ptab"><tr><th>NICK</th><th>SLOGAN</th><th>SCORE</th><th>FOUND</th><th></th></tr>${S.players.map(p => `<tr data-n="${esc(p.nick)}"><td><b>${esc(p.nick)}</b>${p.bot ? ' <span class="tag">demo</span>' : ''}${p.banned ? ' <span class="tag final">BANNED</span>' : ''}</td><td class="mut">${esc(p.slogan)}${p.slogan ? ` <button class="b k sm" data-pclr="${p.id}" title="Remove this placard">✕</button>` : ''}</td><td>${p.score}</td><td>${p.finds}</td><td><button class="b ${p.banned ? 'g' : 'r'} sm" data-pban="${p.id}" data-on="${p.banned ? 0 : 1}">${p.banned ? 'UNBAN' : 'BAN'}</button></td></tr>`).join('')}</table>
     <p class="mut" style="margin-top:8px">The control room never sees phone numbers — they live (if OTP is on) only in the auth provider.</p></div>`;
 }
 function board() {

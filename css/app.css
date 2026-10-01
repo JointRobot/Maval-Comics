@@ -79,7 +79,7 @@ input.field:focus{box-shadow:0 0 0 4px var(--yellow)}
 .nav button.on{color:var(--yellow)}.nav button.on i{filter:none;transform:scale(1.12)}
 
 /* hunt view */
-.status{position:absolute;left:10px;top:10px;right:10px;display:flex;gap:6px;flex-wrap:wrap;pointer-events:none}
+.status{position:absolute;left:10px;top:10px;right:58px;display:flex;gap:6px;flex-wrap:wrap;pointer-events:none}.status .crowdchip{pointer-events:auto;font-family:var(--body)}
 .status .chip{background:rgba(21,19,26,.86);color:#fff;border-color:rgba(255,255,255,.35);font-size:12px;padding:4px 9px}
 .status .chip.alert{background:var(--red)}
 .zoombtns{position:absolute;right:10px;top:46px;display:flex;flex-direction:column;gap:6px}
@@ -243,3 +243,21 @@ input.field:focus{box-shadow:0 0 0 4px var(--yellow)}
 .ov .gsays{margin:14px auto 0;max-width:340px}
 .gtip{position:absolute;left:12px;right:12px;bottom:calc(var(--nav) + 12px);z-index:40;display:flex;align-items:center;gap:10px;background:var(--yellow);color:var(--ink);border:3px solid var(--ink);border-radius:14px;padding:8px 12px 8px 8px;box-shadow:4px 4px 0 var(--pink);animation:up .3s ease-out both}
 .gtip img{width:40px;height:42px}.gtip b{display:block;font:800 14.5px/1.25 var(--body)}.gtip small{display:block;font:600 12px var(--body);color:#5a4a00}
+
+/* slogan language tabs + the crowd wall */
+.langtabs{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;margin:0 -2px;scrollbar-width:none}.langtabs::-webkit-scrollbar{display:none}
+.langtabs .chip{flex:none;font-size:13px}.ov .langtabs .chip{color:var(--ink)}.ov .langtabs .chip.on,.langtabs .chip.on{background:var(--ink);color:var(--yellow)}
+.status .crowdchip{background:var(--yellow);color:var(--ink);border-color:var(--ink);font-weight:800}
+#crowdLink{color:#fff;font-weight:800;margin-top:6px}
+.ov.wall{padding:14px;z-index:36}
+.wallcard{position:relative;background:#FFF8EA;color:var(--ink);border:3px solid var(--ink);border-radius:18px;padding:16px 14px 14px;width:100%;max-width:440px;max-height:100%;overflow:auto;box-shadow:6px 6px 0 var(--pink);text-align:left}
+.wallcard h2{font:26px/1 var(--display);margin:0 30px 6px 0;color:var(--ink)}
+.wallcount{display:flex;align-items:baseline;gap:8px;background:var(--ink);color:#fff;border-radius:12px;padding:8px 12px;margin:6px 0 8px}
+.wallcount b{font:38px/1 var(--display);color:var(--yellow)}.wallcount span{font-weight:700;font-size:13px}
+.ov .wallcard p.wallsub{font-weight:600;font-size:13px;color:#444;margin:0 0 8px;max-width:none}
+.wallgrid{display:flex;flex-wrap:wrap;gap:10px 8px;margin:8px 0 12px;max-height:46vh;overflow:auto;padding:6px 4px}
+.placard{position:relative;font:800 13.5px/1.25 var(--body);color:var(--ink);text-align:left;border:2.5px solid var(--ink);border-radius:4px;padding:8px 10px 8px 10px;max-width:100%;transform:rotate(var(--r,0deg));box-shadow:3px 3px 0 var(--ink)}
+.placard.c0{background:#fff}.placard.c1{background:#FFE98A}.placard.c2{background:#FFC2DD}.placard.c3{background:#BDEFE9}.placard.c4{background:#FFD3A8}
+.placard i{font:normal 800 11px var(--display);position:absolute;right:-8px;top:-9px;background:var(--pink);color:#fff;border:2px solid var(--ink);border-radius:999px;padding:2px 6px}
+.placard.sel{outline:4px solid var(--pink);transform:rotate(0) scale(1.04);z-index:1}
+.wallcard .btn{width:100%;margin-top:8px}

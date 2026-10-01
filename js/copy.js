@@ -1,22 +1,68 @@
 // GYANU HUNT · every word the player sees. Gen Z, Mumbai Hinglish, self-roasting.
 // Edit freely — nothing else needs to change.
 
-export const SLOGANS = [
-  'Soda lemon ginger pop, Gyanu bhai is a flop',
-  'Go Gyanu go! (no seriously, go)',
-  'Ek do teen chaar, Gyanu ab toh haar',
-  'Unemployed? Yes. Undefeated? Also yes.',
-  'Chronically online, briefly outside',
-  'Lazy legend, Gyanu finder',
-  'Kaun Gyanu? Mil gaya Gyanu',
-  'Ek Gyanu, hazaar camera',
-  'Touching grass, catching Gyanu',
-  'Cutting chai, cutting Gyanu’s hiding streak',
-  'Hide & seek champion? Not on my watch',
-  'Gyanu, log out',
-  'It’s giving… found you',
-  'My screen time finally paid off'
-];
+// Placards, grouped by language so people across India can wear one that feels like home.
+export const SLOGAN_SETS = {
+  hinglish: [
+    'Soda lemon ginger pop, Gyanu bhai is a flop',
+    'Go Gyanu go! (no seriously, go)',
+    'Ek do teen chaar, Gyanu ab toh haar',
+    'Unemployed? Yes. Undefeated? Also yes.',
+    'Chronically online, briefly outside',
+    'Lazy legend, Gyanu finder',
+    'Kaun Gyanu? Mil gaya Gyanu',
+    'Ek Gyanu, hazaar camera',
+    'Touching grass, catching Gyanu',
+    'Cutting chai, cutting Gyanu’s hiding streak',
+    'Hide & seek champion? Not on my watch',
+    'Gyanu, log out',
+    'It’s giving… found you',
+    'My screen time finally paid off',
+    'Gyanu bhai, bahar aao, ghar jaana hai',
+    'Bas ek photo, Gyanu. Bas ek.',
+    'Aaj ka plan: Gyanu hunt. Kal ka plan: neend.',
+    'Scroll chhod, Gyanu pakad',
+    'Mera dil, mera Gyanu, mera 5% battery',
+    'Gyanu, tera time aa gaya'
+  ],
+  tamil: [
+    'ஞானு எங்கே? நாங்க கண்டுபிடிப்போம்!',
+    'ஒரு டீ குடிச்சிட்டு ஞானுவைத் தேடுவோம் ☕',
+    'ஞானு, ஞானு… வெளியே வா!',
+    'ஓடாதீங்க, நடந்தே தேடுங்க, ஞானு எங்கயும் போகல',
+    'ஞானுவைப் பிடிச்சா பாயிண்ட்ஸ் தான்!',
+    'போனை எடு, ஞானுவைத் தேடு'
+  ],
+  bengali: [
+    'জ্ঞানু কোথায়? খুঁজে বের করবোই!',
+    'এক কাপ চা আর জ্ঞানু খোঁজা ☕',
+    'জ্ঞানুদা, এবার বেরিয়ে এসো!',
+    'দৌড়িও না, হেঁটে খোঁজো, জ্ঞানু কোথাও যাচ্ছে না',
+    'জ্ঞানুকে ধরলেই পয়েন্ট!',
+    'আড্ডাও চাই, জ্ঞানুও চাই'
+  ],
+  marathi: [
+    'ज्ञानू कुठे आहे? आम्ही शोधणारच!',
+    'कटिंग चहा प्या, ज्ञानूला शोधा ☕',
+    'ज्ञानूभाऊ, आता बाहेर या!',
+    'पळू नका, चालत शोधा, ज्ञानू कुठे जात नाही',
+    'ज्ञानू सापडला की पॉइंट्स पक्के!'
+  ],
+  pan: [
+    'Delhi to Chennai, Mumbai to Kolkata: find Gyanu 🪳',
+    'Gyanu in every language, found in none (yet)',
+    '404: Gyanu not found',
+    'Walk, snap, share. Gyanu hates it.',
+    'Ctrl + Alt + Gyanu',
+    'Chai, chill, catch Gyanu ☕',
+    'Gyanu, we have your location. (We don’t.)'
+  ]
+};
+export const SLOGAN_LANGS = [['hinglish', 'Hinglish'], ['tamil', 'தமிழ்'], ['bengali', 'বাংলা'], ['marathi', 'मराठी'], ['pan', 'Pan-India']];
+export const SLOGANS = Object.values(SLOGAN_SETS).flat();
+export const defaultSloganLang = () => { const l = (navigator.language || '').toLowerCase(); return l.startsWith('ta') ? 'tamil' : l.startsWith('bn') ? 'bengali' : l.startsWith('mr') ? 'marathi' : 'hinglish'; };
+// Which script is a placard written in? Used by the Crowd wall filter.
+export const scriptOf = t => /[\u0B80-\u0BFF]/.test(t) ? 'tamil' : /[\u0980-\u09FF]/.test(t) ? 'bengali' : /[\u0900-\u097F]/.test(t) ? 'marathi' : 'latin';
 
 export const T = {
   tagline: 'Can you spot Gyanu?',

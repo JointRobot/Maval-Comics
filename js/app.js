@@ -1,6 +1,6 @@
 // GYANU HUNT · the player app. Vanilla JS, no framework, one module graph.
 import { CONFIG, ZONES, SCENE_CATS } from './config.js';
-import { T, SLOGANS, RULES_COPY, INTRO, TOUR, gsay } from './copy.js';
+import { T, SLOGANS, SLOGAN_SETS, SLOGAN_LANGS, defaultSloganLang, scriptOf, RULES_COPY, INTRO, TOUR, gsay } from './copy.js';
 import { RULES, speedBonus } from './rules.js';
 import { backend, cleanNick, cleanSlogan } from './backend.js';
 import { analyse, verify } from './verify.js';
@@ -62,18 +62,23 @@ function fillStatic() {
   document.querySelectorAll('#nav button').forEach(b => (b.querySelector('span').textContent = T.nav[b.dataset.v] || 'SCENE'));
 }
 
-let chosenSlogan = SLOGANS[0], wantHome = false, otpOk = CONFIG.otp === 'off', demoCode = null;
+let wantHome = false, otpOk = CONFIG.otp === 'off', demoCode = null;
+let sloganLang = defaultSloganLang(), chosenSlogan = SLOGAN_SETS[sloganLang][0];
+const langTabsHtml = (cur, attr = 'data-l') => SLOGAN_LANGS.map(([id, label]) => `<button class="chip${cur === id ? ' on' : ''}" ${attr}="${id}">${esc(label)}</button>`).join('');
+function renderJoinSlogans() {
+  const box = $('#slogans'), customOn = chosenSlogan === null;
+  $('#sloganLangs').innerHTML = langTabsHtml(sloganLang);
+  box.innerHTML = SLOGAN_SETS[sloganLang].map(x => `<button class="chip${x === chosenSlogan ? ' on' : ''}" data-s="${esc(x)}">${esc(x)}</button>`).join('') + `<button class="chip${customOn ? ' on' : ''}" data-custom="1">✍️ ${esc(T.sloganCustom)}</button>`;
+}
 function showJoin(home) {
   wantHome = !!home;
   $('#landing').classList.add('hide'); $('#join').classList.remove('hide');
-  const box = $('#slogans');
-  const first = 0; chosenSlogan = SLOGANS[0];
-  box.innerHTML = SLOGANS.map((s, i) => `<button class="chip${i === first ? ' on' : ''}" data-s="${esc(s)}">${esc(s)}</button>`).join('') + `<button class="chip" data-custom="1">✍️ ${esc(T.sloganCustom)}</button>`;
-  box.onclick = e => {
+  sloganLang = defaultSloganLang(); chosenSlogan = SLOGAN_SETS[sloganLang][0]; renderJoinSlogans();
+  $('#sloganLangs').onclick = e => { const b = e.target.closest('[data-l]'); if (!b) return; sloganLang = b.dataset.l; renderJoinSlogans(); };
+  $('#slogans').onclick = e => {
     const b = e.target.closest('button'); if (!b) return;
-    box.querySelectorAll('.chip').forEach(c => c.classList.remove('on')); b.classList.add('on');
     const custom = !!b.dataset.custom; $('#sloganCustom').classList.toggle('hide', !custom);
-    chosenSlogan = custom ? null : b.dataset.s; if (custom) $('#sloganCustom').focus();
+    chosenSlogan = custom ? null : b.dataset.s; renderJoinSlogans(); if (custom) $('#sloganCustom').focus();
   };
   $('#otpBox').classList.toggle('hide', CONFIG.otp === 'off');
   $('#nick').focus();
@@ -166,7 +171,7 @@ function renderStatus(offline) {
   const s = st?.stats, chips = [];
   if (offline) chips.push(`<span class="chip alert">📶 weak network — retrying</span>`);
   if (st?.settings.finalLive) chips.push(`<span class="chip alert">FINAL GYANU LIVE</span>`);
-  if (s) chips.push(`<span class="chip">🟢 ${s.online} hunting</span>`, `<span class="chip">🎯 ${s.caught} caught today</span>`);
+  if (s) chips.push(`<span class="chip">🟢 ${s.online} hunting</span>`, `<span class="chip">🎯 ${s.caught} caught today</span>`, `<button class="chip crowdchip" data-crowd="1">🪧 ${fmt(s.crowd || 0)} in the crowd</button>`);
   if (s?.busy?.length) chips.push(`<span class="chip alert">⚠️ busy: ${s.busy.map(z => ZONES.find(q => q.id === z)?.short).join(', ')}</span>`);
   $('#status').innerHTML = chips.join('');
 }
@@ -574,10 +579,14 @@ async function renderProfile() {
     <button class="btn" style="background:var(--red);color:#fff" id="delMe">${esc(T.deleteBtn)}</button></div>`;
   $('#pShare').onclick = () => doShare(); $('#pW').onclick = startWhack;
   $('#editSl').onclick = () => {
-    const o = layer(`<h2 class="big" style="font-size:34px">NEW PLACARD</h2><div class="slogans" style="justify-content:center;margin:12px 0">${SLOGANS.map(s => `<button class="chip" data-s="${esc(s)}">${esc(s)}</button>`).join('')}</div>
+    let pl = defaultSloganLang();
+    const o = layer(`<h2 class="big" style="font-size:34px">NEW PLACARD</h2><div class="langtabs" id="pLangs" style="justify-content:center;margin-top:10px"></div><div class="slogans" id="pSl" style="justify-content:center;margin:12px 0"></div>
       <input class="field" id="sl2" maxlength="60" placeholder="${esc(T.sloganPh)}" style="max-width:360px"><p class="err" id="sle"></p>
       <div class="sw stack"><button class="btn pink" id="slGo">SAVE</button><button class="link" style="color:#fff" id="slX">cancel</button></div>`);
-    o.querySelector('.slogans').onclick = e => { const b = e.target.closest('[data-s]'); if (b) { o.querySelector('#sl2').value = b.dataset.s; o.querySelectorAll('.slogans .chip').forEach(c => c.classList.toggle('on', c === b)); } };
+    const paint = () => { o.querySelector('#pLangs').innerHTML = langTabsHtml(pl); o.querySelector('#pSl').innerHTML = SLOGAN_SETS[pl].map(x => `<button class="chip${o.querySelector('#sl2').value === x ? ' on' : ''}" data-s="${esc(x)}">${esc(x)}</button>`).join(''); };
+    paint();
+    o.querySelector('#pLangs').onclick = e => { const b = e.target.closest('[data-l]'); if (b) { pl = b.dataset.l; paint(); } };
+    o.querySelector('#pSl').onclick = e => { const b = e.target.closest('[data-s]'); if (b) { o.querySelector('#sl2').value = b.dataset.s; paint(); } };
     o.querySelector('#slX').onclick = () => o.remove();
     o.querySelector('#slGo').onclick = async () => { try { await backend.setSlogan(o.querySelector('#sl2').value); o.remove(); await refresh(); renderProfile(); } catch (e) { o.querySelector('#sle').textContent = e.message; } };
   };
@@ -590,6 +599,40 @@ async function renderProfile() {
       o.innerHTML = `<h2 class="big" style="font-size:36px">${esc(T.deleted)}</h2>`; setTimeout(() => location.reload(), 1200);
     };
   };
+}
+
+// ---------------------------------------------------------------- the crowd wall
+// A head-count and the placards people carry. No names, no scores, no locations. Anyone can look; anyone can join.
+async function openCrowd() {
+  if (document.querySelector('.wall')) return;
+  const joined = !!backend.meId(); let data = { total: 0, slogans: [] }, lang = 'all', picked = null, alive = true;
+  const o = layer('', 'wall');
+  const paint = () => {
+    const list = data.slogans.filter(x => lang === 'all' || scriptOf(x.s) === lang || (lang === 'hinglish' && scriptOf(x.s) === 'latin'));
+    const tabs = [['all', 'All'], ['hinglish', 'Hinglish / English'], ['tamil', 'தமிழ்'], ['bengali', 'বাংলা'], ['marathi', 'मराठी / हिंदी']];
+    o.innerHTML = `<div class="wallcard"><button class="fbx" id="wX" aria-label="Close">✕</button>
+      <h2>THE CROWD</h2>
+      <div class="wallcount"><b>${fmt(data.total)}</b><span>${data.total === 1 ? 'person' : 'people'} in the hunt right now</span></div>
+      <p class="wallsub">At the ground or on the couch, everyone counts. Outsiders welcome. Hunt, whack, chant and share, same game for all.</p>
+      <div class="langtabs">${tabs.map(([id, l]) => `<button class="chip${lang === id ? ' on' : ''}" data-wl="${id}">${esc(l)}</button>`).join('')}</div>
+      <div class="wallgrid">${list.length ? list.map((x, i) => `<button class="placard c${i % 5}${picked === x.s ? ' sel' : ''}" data-p="${i}" style="--r:${((i * 37) % 7 - 3) * 0.6}deg">${esc(x.s)}${x.n > 1 ? `<i>×${fmt(x.n)}</i>` : ''}</button>`).join('') : '<p class="wallsub">No placards here yet. Be the first.</p>'}</div>
+      ${picked && joined ? `<button class="btn" id="wWear">🪧 WEAR THIS PLACARD</button>` : ''}
+      <button class="btn pink" id="wJoin">${joined ? '✍️ CHANGE MY PLACARD' : 'JOIN THE CROWD'}</button></div>`;
+    o.querySelector('#wX').onclick = close;
+    o.querySelectorAll('[data-wl]').forEach(b => (b.onclick = () => { lang = b.dataset.wl; paint(); }));
+    o.querySelectorAll('[data-p]').forEach(b => (b.onclick = () => { picked = picked === list[+b.dataset.p].s ? null : list[+b.dataset.p].s; play('tap'); paint(); }));
+    o.querySelector('#wWear')?.addEventListener('click', async () => { try { await backend.setSlogan(picked); toast('You’re carrying that placard now 🪧'); play('level'); close(); refresh(); } catch (e) { toast(e.message); } });
+    o.querySelector('#wJoin').onclick = () => { close(); if (joined) { go('profile'); } else { $('#landing').classList.add('hide'); showJoin(false); } };
+  };
+  const close = () => { alive = false; o.remove(); };
+  const load = async () => { try { data = await backend.crowd(); if (alive && !picked) paint(); else if (alive) { /* keep selection stable */ } } catch {} };
+  paint(); await load(); const iv = setInterval(() => (alive ? load() : clearInterval(iv)), 8000);
+}
+async function landingCrowd() {
+  try {
+    const c = await backend.crowd(); if (!c?.total) return;
+    const l = $('#crowdLink'); l.style.display = ''; l.textContent = `🪧 ${fmt(c.total)} already in the crowd · peek at the placards`; l.onclick = openCrowd;
+  } catch {}
 }
 
 // ---------------------------------------------------------------- whack-a-gyanu (at home)
@@ -654,6 +697,8 @@ function boot() {
   fillStatic();
   $('#playBtn').onclick = () => showJoin(false);
   $('#homeLink').onclick = () => showJoin(true);
+  $('#status').addEventListener('click', e => { if (e.target.closest('[data-crowd]')) openCrowd(); });
+  if (!backend.meId()) landingCrowd();
   $('#introBtn').onclick = () => runTour(INTRO, { auto: true, doneLabel: 'LET’S PLAY' });
   setInterval(() => { // Gyanu pops up now and then with a share-what-you-know nudge
     if (document.hidden || $('#game').classList.contains('hide') || $('#layer').children.length || tourOpen() || whack || document.querySelector('.gtip')) return;

@@ -8,6 +8,8 @@
 import { CONFIG, ZONES, SCENE_CATS } from './config.js';
 import { RULES, scoreFind } from './rules.js';
 import { hamming } from './verify.js';
+import { SLOGANS } from './copy.js';
+const PRESETS = new Set(SLOGANS);
 
 const uid = (p = '') => p + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4);
 const now = () => Date.now();
@@ -26,6 +28,10 @@ export function cleanSlogan(raw) {
   const s = String(raw || '').replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60);
   if (!s) return { slogan: '' };
   if (rude(s)) return { error: 'Keep the placard roast-y, not abusive.' };
+  if (/https?:|www\.|@/i.test(s) || /\d{6,}/.test(s.replace(/[\s-]/g, ''))) return { error: 'No links, emails or phone numbers on a placard.' };
+  // Custom placards must be in English letters/emoji (our rude-word check can't read other scripts).
+  // Tamil, Bengali, Marathi and Hindi placards come from the ready-made list.
+  if (/[^\u0000-\u024F\u2000-\u2BFF\uFE0F\u{1F000}-\u{1FAFF}]/u.test(s) && !PRESETS.has(s)) return { error: 'Custom placards need English letters. Pick a ready-made one for Tamil, Bengali, Marathi or Hindi.' };
   return { slogan: s };
 }
 export const avatarFor = id => {
@@ -121,6 +127,7 @@ export class LocalBackend {
     const t0 = startOfToday(), live = this.liveScene(db);
     return {
       online: db.players.filter(p => now() - (p.lastSeen || 0) < 5 * 60e3).length,
+      crowd: db.players.filter(p => !p.banned).length,
       caught: db.subs.filter(s => s.status === 'approved' && s.createdAt >= t0).length,
       hypeWins: db.settings.hypeWins || 0,
       water: live.filter(r => r.cat === 'water').length,
@@ -334,6 +341,13 @@ export class LocalBackend {
     localStorage.removeItem(ME);
   }
 
+  // ---------------- the crowd wall: head-count + placards, nothing else ----------------
+  async crowd() {
+    const db = this.load(), live = db.players.filter(p => !p.banned), by = new Map();
+    for (const p of live) if (p.slogan) { const e = by.get(p.slogan) || { s: p.slogan, n: 0, t: 0 }; e.n++; e.t = Math.max(e.t, p.createdAt || 0); by.set(p.slogan, e); }
+    return { total: live.length, slogans: [...by.values()].sort((a, b) => b.n - a.n || b.t - a.t).slice(0, 120).map(({ s, n }) => ({ s, n })) };
+  }
+
   // ---------------- suggestion box ----------------
   async feedback(f) {
     const db = this.load(); db.feedback = db.feedback || []; const me = this.me(db);
@@ -420,6 +434,7 @@ export class LocalBackend {
         }
         break;
       }
+      case 'clearSlogan': { const p = P(a.id); if (p) p.slogan = ''; break; }
       case 'ban': { const p = P(a.id); if (p) p.banned = !!a.on; break; }
       case 'resetScores':
         db.players.forEach(p => { p.score = 0; p.finds = 0; p.streak = 0; p.bestStreak = 0; p.lastZone = null; p.todayBase = 0; p.notices = []; p.homeBest = 0; });
@@ -511,6 +526,7 @@ export class SupabaseBackend {
     return r;
   }
   async history() { return this.rpc('gh_history', { p_token: this.tok() }); }
+  async crowd() { return this.rpc('gh_crowd', {}); }
   async feedback(f) { return this.rpc('gh_feedback', { p_token: this.tok(), p_kind: f.kind, p_text: f.text, p_mood: f.mood || null, p_ctx: f.ctx || {}, p_audio: f.audio || null, p_mime: f.mime || null }); }
   async deleteMe() { await this.rpc('gh_delete_me', { p_token: this.tok() }); localStorage.removeItem(ME); }
   async admin(action, a = {}) {
