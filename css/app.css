@@ -331,3 +331,6 @@ html,body{position:fixed;inset:0;width:100%;height:100%;overflow:hidden;overscro
 .langtabs{flex:none;min-height:46px;max-width:100%}
 .ov .field{color:var(--ink);background:#fff}
 .chantlist{flex:none}
+
+.qrbox{background:#fff;border:4px solid var(--ink);border-radius:14px;padding:10px;width:min(62vw,230px);box-shadow:5px 5px 0 var(--pink)}.qrbox img{display:block;width:100%;height:auto;image-rendering:pixelated}
+.paysteps{text-align:left;font-size:13.5px;font-weight:600;margin:12px 0 4px;padding-left:20px;max-width:340px;color:#fff}.paysteps li{margin:4px 0}

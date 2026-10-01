@@ -357,6 +357,8 @@ async function handleNotices() {
   for (const x of n) {
     if (x.kind === 'approved') showResult({ status: 'approved', points: x.points, parts: x.parts, streak: x.streak, special: x.special }, null, true);
     else if (x.kind === 'rejected') toast('❌ ' + T.rejected, 4000);
+    else if (x.kind === 'callsgranted') { confetti(40); play('cash'); toast(`✅ +${x.calls} calls added. Go call the crowd!`, 4500); }
+    else if (x.kind === 'callsdenied') toast('We couldn’t match that payment. Tap 💬 and tell us, we’ll sort it.', 5000);
     else if (x.kind === 'hypecall') { confetti(30); play('cash'); toast(`📣 Your call moved ${x.joined} phone${x.joined === 1 ? '' : 's'}: +${x.points} energy points`, 4500); }
   }
 }
@@ -765,7 +767,8 @@ function openCall() {
     <input class="field" id="cText" maxlength="40" value="${esc(line)}" style="margin:10px 0 4px;text-align:center" aria-label="Your chant">
     <p class="small muted" style="color:#CFC6B8">Type your own in English letters, or tap a ready-made one. Keep it fun, not nasty.</p>
     <p class="err" id="cErr" style="min-height:18px"></p>
-    <div class="sw stack"><button class="btn pink" id="cGo" ${left ? '' : 'disabled'}>📣 SEND TO EVERY PHONE</button><button class="link" style="color:#fff" id="cX">cancel</button></div>`);
+    <div class="sw stack"><button class="btn pink" id="cGo" ${left ? '' : 'disabled'}>📣 SEND TO EVERY PHONE</button>${CONFIG.pay?.rupees ? `<button class="btn ${left ? 'ghost' : 'teal'}" id="cBuy" style="${left ? 'color:var(--ink)' : ''}">💸 NEED MORE CALLS? ₹${CONFIG.pay.rupees} = ${CONFIG.pay.calls} CALLS${st.me.pendingCalls ? ` (${st.me.pendingCalls} waiting)` : ''}</button>` : ''}<button class="link" style="color:#fff" id="cX">cancel</button></div>`);
+  o.querySelector('#cBuy')?.addEventListener('click', () => { o.remove(); openBuyCalls(); });
   const text = o.querySelector('#cText');
   o.querySelector('#cX').onclick = () => o.remove();
   o.querySelectorAll('[data-k]').forEach(b => (b.onclick = () => {
@@ -782,6 +785,28 @@ function openCall() {
       if (!r.ok) { err.textContent = r.reason; btn.disabled = false; return; }
       o.remove(); play('horn'); buzz([30, 40, 30]); toast('📣 SENT TO EVERY PHONE', 2200); await refresh();
     } catch (e) { err.textContent = e.message; btn.disabled = false; }
+  };
+}
+
+function openBuyCalls() {
+  const P = CONFIG.pay;
+  const o = layer(`<h2 class="big" style="font-size:32px">MORE CALLS</h2>
+    <p class="small" style="margin:8px 0 10px">Totally optional. ₹${P.rupees} = ${P.calls} extra calls to call the crowd.</p>
+    <div class="qrbox"><img id="payQr" src="${esc(P.qr)}" alt="Payment QR code"><p id="payNoQr" class="hide small" style="color:var(--ink)">The payment QR isn’t set up yet. Ask the crew, or just play with your free calls.</p></div>
+    <ol class="paysteps"><li>Scan the QR with any UPI app and pay <b>₹${P.rupees}</b>.</li><li>Type the <b>last 4 characters</b> of the UPI reference / transaction ID.</li><li>Tap SEND. A crew member checks it and your ${P.calls} calls land in a few minutes.</li></ol>
+    <input class="field" id="payRef" maxlength="4" autocomplete="off" autocapitalize="characters" placeholder="last 4 of reference, e.g. 4F7A" style="text-align:center;letter-spacing:.15em;margin-top:6px">
+    <p class="small muted" style="color:#CFC6B8;margin-top:4px">Only the 4 characters. No phone number, no name, no bank details.</p>
+    <p class="err" id="payErr" style="min-height:18px"></p>
+    <div class="sw stack"><button class="btn pink" id="payGo">SEND FOR APPROVAL</button><button class="link" style="color:#fff" id="payX">back</button></div>`);
+  const img = o.querySelector('#payQr'); img.onerror = () => { img.classList.add('hide'); o.querySelector('#payNoQr').classList.remove('hide'); };
+  o.querySelector('#payX').onclick = () => { o.remove(); openCall(); };
+  o.querySelector('#payGo').onclick = async () => {
+    const err = o.querySelector('#payErr'); err.textContent = '';
+    try {
+      const r = await backend.requestCalls(o.querySelector('#payRef').value);
+      if (!r.ok) { err.textContent = r.reason; return; }
+      o.remove(); play('cash'); toast('💸 Sent! The crew will approve it shortly.', 3500); await refresh();
+    } catch (e) { err.textContent = e.message; }
   };
 }
 

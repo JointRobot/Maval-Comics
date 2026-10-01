@@ -165,7 +165,7 @@ export class LocalBackend {
       me: me && {
         id: me.id, nick: me.nick, slogan: me.slogan, avatar: me.avatar, score: me.score, finds: me.finds, streak: me.streak, bestStreak: me.bestStreak,
         banned: me.banned, rank: (board.findIndex(r => r.id === me.id) + 1) || null, players: board.length,
-        lastSubmitAt: me.lastSubmitAt, notices: me.notices || [], homeBest: me.homeBest || 0, punchBest: me.punchBest || 0, callsLeft: Math.max(0, RULES.callsPerPlayer - (me.calls || 0))
+        lastSubmitAt: me.lastSubmitAt, notices: me.notices || [], homeBest: me.homeBest || 0, punchBest: me.punchBest || 0, callsLeft: Math.max(0, RULES.callsPerPlayer + (me.callBonus || 0) - (me.calls || 0)), pendingCalls: (db.callReqs || []).filter(q => q.playerId === me.id && q.status === 'new').length
       }
     };
   }
@@ -270,7 +270,7 @@ export class LocalBackend {
     if (me.banned) return no('Your account is paused.');
     if (db.settings.paused || db.settings.ended) return no('Calls are paused right now.');
     if (!['chant', 'shake', 'statue', 'lights'].includes(kind)) return no('Pick a move first.');
-    if ((me.calls || 0) >= RULES.callsPerPlayer) return no(`All ${RULES.callsPerPlayer} calls used. Join the others now 🪳`);
+    if ((me.calls || 0) >= RULES.callsPerPlayer + (me.callBonus || 0)) return no(CONFIG.pay?.rupees ? 'All your calls are used. Tap NEED MORE CALLS, or join the others now 🪳' : 'All your calls are used. Join the others now 🪳');
     if (now() - (me.lastCallAt || 0) < RULES.callCooldownSec * 1000) return no('Easy, caller. Wait a minute before your next one.');
     const live = db.settings.hype;
     if (live && !live.done && now() < live.endsAt) return no('A moment is already live. Go join it!');
@@ -282,7 +282,21 @@ export class LocalBackend {
     const dur = kind === 'lights' ? 20 : RULES.callDurSec;
     db.settings.hype = { id: uid('h_'), kind, text: line, by: me.id, byNick: me.nick, startedAt: now(), endsAt: now() + dur * 1000, goal: RULES.hypeGoalPerPhone, total: 0, contrib: {}, last: {}, done: false };
     this.save(db);
-    return { ok: true, left: RULES.callsPerPlayer - me.calls };
+    return { ok: true, left: RULES.callsPerPlayer + (me.callBonus || 0) - me.calls };
+  }
+
+  // ---------- paid extra calls: player pays by UPI QR, enters the last 4 of the reference, crew approves
+  async requestCalls(ref) {
+    const db = this.load(); const me = this.me(db); if (!me) throw new Error('Join first');
+    const no = reason => ({ ok: false, reason }); const code = String(ref || '').trim().toUpperCase();
+    if (!CONFIG.pay?.rupees) return no('Top-ups are off.');
+    if (!/^[A-Z0-9]{4}$/.test(code)) return no('Type just the last 4 letters or digits of your UPI reference.');
+    db.callReqs = db.callReqs || [];
+    const mine = db.callReqs.filter(q => q.playerId === me.id);
+    if (mine.filter(q => q.status === 'new').length >= 3) return no('You already have 3 waiting. The crew will get to them.');
+    if (mine.some(q => now() - q.createdAt < 60e3)) return no('One request a minute, please.');
+    db.callReqs.push({ id: uid('q_'), playerId: me.id, nick: me.nick, ref: code, rupees: CONFIG.pay.rupees, calls: CONFIG.pay.calls, status: 'new', createdAt: now() });
+    this.save(db); return { ok: true };
   }
 
   // ---------- whack-a-Gyanu (at home)
@@ -380,6 +394,7 @@ export class LocalBackend {
     const db = this.load(); const me = this.meId();
     db.subs = db.subs.filter(s => s.playerId !== me);
     db.feedback = (db.feedback || []).filter(x => x.deviceMe !== me);
+    db.callReqs = (db.callReqs || []).filter(x => x.playerId !== me);
     db.scene = db.scene.filter(r => r.by !== me).map(r => ({ ...r, yes: r.yes.filter(x => x !== me), gone: r.gone.filter(x => x !== me) }));
     if (db.settings.hype?.contrib) delete db.settings.hype.contrib[me];
     db.players = db.players.filter(p => p.id !== me);
@@ -488,6 +503,15 @@ export class LocalBackend {
         db.gyanus.forEach(g => { g.finds = 0; g.claimedBy = null; });
         db.settings.ended = false; db.settings.winner = null; db.settings.hypeWins = 0;
         break;
+      case 'callReqs': return (db.callReqs || []).slice(-100).reverse();
+      case 'callApprove': case 'callReject': {
+        const q = (db.callReqs || []).find(x => x.id === a.id && x.status === 'new'); if (!q) break;
+        q.status = action === 'callApprove' ? 'approved' : 'rejected'; q.doneAt = now();
+        const p = P(q.playerId);
+        if (p && q.status === 'approved') { p.callBonus = (p.callBonus || 0) + q.calls; p.notices = [...(p.notices || []), { id: uid('n_'), kind: 'callsgranted', calls: q.calls }]; }
+        else if (p) p.notices = [...(p.notices || []), { id: uid('n_'), kind: 'callsdenied' }];
+        break;
+      }
       case 'feedback': return (db.feedback || []).map(({ audio, deviceMe, ...r }) => ({ ...r, hasAudio: !!audio }));
       case 'feedbackAudio': { const f = (db.feedback || []).find(x => x.id === a.id); return { audio: f?.audio || null, mime: f?.mime || null }; }
       case 'feedbackMark': { const f = (db.feedback || []).find(x => x.id === a.id); if (f) f.status = a.status; break; }
@@ -564,6 +588,7 @@ export class SupabaseBackend {
   }
   async hype(level) { return this.rpc('gh_hype', { p_token: this.tok(), p_level: level }); }
   async homeScore(n) { return this.rpc('gh_home_score', { p_token: this.tok(), p_score: n }); }
+  async requestCalls(ref) { return this.rpc('gh_request_calls', { p_token: this.tok(), p_ref: String(ref || '') }); }
   async callCrowd(kind, text) { const s = cleanSlogan(text); if (s.error) return { ok: false, reason: s.error.replace('placard', 'chant') }; return this.rpc('gh_call_crowd', { p_token: this.tok(), p_kind: kind, p_text: s.slogan }); }
   async punchScore(n) { return this.rpc('gh_punch_score', { p_token: this.tok(), p_score: n }); }
   async scene() { return this.rpc('gh_scene', { p_token: this.tok() }); }

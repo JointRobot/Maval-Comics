@@ -8,7 +8,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const zn = id => ZONES.find(z => z.id === id)?.name || id;
 const ci = id => SCENE_CATS.find(c => c.id === id)?.icon || '?';
 const ago = t => { if (!t) return '—'; const s = Math.round((Date.now() - t) / 1000); return s < 60 ? `${s}s` : s < 3600 ? `${Math.round(s / 60)}m` : `${Math.round(s / 3600)}h`; };
-let pin = sessionStorage.getItem('gh_pin') || '', tab = 'live', S = null, FB = [], fbKind = '', fbStatus = '', editing = null, pendingRefs = [];
+let pin = sessionStorage.getItem('gh_pin') || '', tab = 'live', S = null, FB = [], PAY = [], fbKind = '', fbStatus = '', editing = null, pendingRefs = [];
 const toast = m => { const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 2000); };
 const act = async (a, p = {}, msg) => { try { await backend.admin(a, { pin, ...p }); if (msg) toast(msg); await load(); } catch (e) { toast('⚠️ ' + e.message); } };
 
@@ -29,7 +29,8 @@ $('#pauseBtn').onclick = () => {
 };
 
 async function load() {
-  try { S = await backend.admin('state', { pin }); FB = await backend.admin('feedback', { pin }).catch(() => FB); } catch (e) { toast(e.message); return; }
+  try { S = await backend.admin('state', { pin }); FB = await backend.admin('feedback', { pin }).catch(() => FB); PAY = await backend.admin('callReqs', { pin }).catch(() => PAY); } catch (e) { toast(e.message); return; }
+  const waiting = PAY.filter(q => q.status === 'new').length; $('[data-t=pay]').textContent = `PAYMENTS${waiting ? ` (${waiting})` : ''}`;
   const fresh = FB.filter(f => f.status === 'new').length; $('[data-t=inbox]').textContent = `FEEDBACK${fresh ? ` (${fresh})` : ''}`;
   const pb = $('#pauseBtn'); pb.textContent = S.settings.paused ? '▶ RESUME HUNT' : '⏸ PAUSE'; pb.className = 'b ' + (S.settings.paused ? 'g' : 'r');
   const pending = S.subs.filter(s => s.status === 'pending').length;
@@ -44,7 +45,7 @@ setInterval(() => !document.hidden && $('#room').offsetParent && load(), 4000);
 function render() {
   if (!S) return;
   const b = $('#body');
-  const views = { live, create, subs, hype, crowd, players, board, inbox, settings };
+  const views = { live, create, subs, hype, crowd, players, board, pay, inbox, settings };
   b.innerHTML = views[tab]();
   wire[tab]?.();
 }
@@ -66,6 +67,14 @@ function live() {
     ${S.settings.paused ? `<div class="card paused"><h2 style="color:#fff">⏸ HUNT PAUSED</h2><p>${esc(S.settings.pauseReason)}</p></div>` : ''}
     ${S.settings.ended ? `<div class="card"><h2>HUNT COMPLETE${S.settings.winner ? ` — ${esc(S.settings.winner)} caught the Final Gyanu` : ''}</h2><button class="b sm" id="reopen">REOPEN HUNT</button></div>` : ''}
     <div class="grid">${g}</div>`;
+}
+// ---------- PAYMENTS: ₹5 = 5 more calls. Match the 4-character reference against your UPI app, then approve.
+function pay() {
+  const rows = PAY.map(q => `<div class="card"><div class="row"><span class="tag ${q.status === 'new' ? 'golden' : q.status === 'approved' ? 'on' : 'final'}">${q.status.toUpperCase()}</span>
+    <b>${esc(q.nick)}</b><span style="font:700 20px monospace;letter-spacing:.12em">${esc(q.ref)}</span><span class="mut">₹${q.rupees} → +${q.calls} calls · ${ago(q.createdAt)} ago</span>
+    ${q.status === 'new' ? `<span style="margin-left:auto" class="row"><button class="b g sm" data-pok="${q.id}">✓ APPROVE +${q.calls}</button><button class="b r sm" data-pno="${q.id}">✕ NOT FOUND</button></span>` : ''}</div></div>`).join('');
+  return `<div class="card"><b>PAYMENTS</b><p class="mut" style="margin-top:6px">Players pay by your UPI QR and type the last 4 characters of the reference. Open your UPI app's history, find a payment ending in the same 4 characters, then tap APPROVE. Not found? Tap NOT FOUND. Nothing is credited until you approve.</p></div>
+    ${PAY.length ? rows : '<div class="card"><p class="mut">No requests yet.</p></div>'}`;
 }
 // ---------- FEEDBACK: the suggestion / complaint box inbox
 const KIND_ICON = { bug: '🐛', annoying: '😤', idea: '💡', love: '❤️', other: '💬' };
@@ -103,6 +112,10 @@ function inbox() {
     ${list.length ? items : '<div class="card"><p class="mut">Nothing here yet. When players tap 💬 in the game, their notes land in this inbox.</p></div>'}`;
 }
 const wire = {
+  pay() {
+    document.querySelectorAll('[data-pok]').forEach(b => (b.onclick = () => act('callApprove', { id: b.dataset.pok }, 'Approved. Calls added.')));
+    document.querySelectorAll('[data-pno]').forEach(b => (b.onclick = () => confirm('Tell the player you could not match this payment?') && act('callReject', { id: b.dataset.pno }, 'Marked not found')));
+  },
   inbox() {
     $('#fbK').onchange = e => { fbKind = e.target.value; render(); }; $('#fbS').onchange = e => { fbStatus = e.target.value; render(); };
     $('#fbDigest').onclick = async () => { const t = digest(); try { await navigator.clipboard.writeText(t); toast('Digest copied. Paste it to Claude.'); } catch { const w = open('', '_blank'); if (w) { w.document.write('<pre style="white-space:pre-wrap;font:14px monospace">' + esc(t) + '</pre>'); } else toast('Copy blocked. Use JSON download.'); } };

@@ -62,6 +62,10 @@ async function act(kind) {
       for (const x of p) await A('review', { id: x.id, decision: 'approve', quality: 'clear' });
       return;
     }
+    case 'pay': {
+      const l = (await A('callReqs')).filter(q => q.status === 'new'); if (!l.length) return toast('No payment requests waiting.');
+      for (const q of l) await A('callApprove', { id: q.id }); return toast(`Approved ${l.length} payment${l.length === 1 ? '' : 's'}.`);
+    }
     case 'reject': {
       const p = s.subs.find(x => x.status === 'pending'); if (!p) return toast('Nothing waiting for the judges.');
       return A('review', { id: p.id, decision: 'reject', reason: 'That’s a chai cup, not Gyanu' });
@@ -95,7 +99,7 @@ function open() {
   const p = document.createElement('div'); p.id = 'demoPanel';
   p.innerHTML = `<h4>🎛 PREVIEW CREW PANEL</h4>
     <p>You, the hunter</p><div class="g"><button class="d p" data-a="snap">📸 SNAP A SAMPLE GYANU</button><button class="d k" data-a="close">close panel</button></div>
-    <p>Judges</p><div class="g"><button class="d t" data-a="approve">✓ APPROVE PENDING</button><button class="d k" data-a="reject">✕ REJECT ONE</button></div>
+    <p>Judges</p><div class="g"><button class="d t" data-a="approve">✓ APPROVE PENDING</button><button class="d k" data-a="reject">✕ REJECT ONE</button><button class="d t" data-a="pay">💸 APPROVE ₹5 CALL PAYMENTS</button></div>
     <p>Gyanu</p><div class="g"><button class="d" data-a="move">🚶 GYANU HAS MOVED</button><button class="d" data-a="golden">✨ DROP GOLDEN</button><button class="d r" data-a="final">💀 START FINAL BOSS</button></div>
     <p>Hype moments</p><div class="g"><button class="d p" data-a="chant">🎤 CHANT-O-METER</button><button class="d p" data-a="shake">📳 SHAKE THE BANYAN</button><button class="d p" data-a="statue">🧊 STATUE MODE</button><button class="d p" data-a="lights">🔦 LIGHT SHOW</button></div>
     <p>Crowd safety</p><div class="g"><button class="d r" data-a="pause">⏸ PAUSE / RESUME</button><button class="d k" data-a="busy">⚠️ FOOD GALI BUSY</button><button class="d k" data-a="closed">⛔ GAMES CLOSED</button><button class="d k" data-a="reset">♻ RESET PREVIEW</button></div>
