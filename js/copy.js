@@ -148,7 +148,7 @@ export const T = {
   homeDone: n => n >= 40 ? 'Cracked. Touch grass after this.' : n >= 20 ? 'Okay you ate.' : n >= 8 ? 'Mid, but we move.' : 'Thumbs warming up, it’s fine.',
   homeBest: n => `Your best: ${n}`,
   homeRoach: 'NOT THE ROACH 😭',
-  punchTitle: 'PUNCH THE BAG',
+  punchTitle: 'PUNCH',
   punchSub: '60 seconds. Tap the bag as fast as your thumb can. Every punch counts. Highest total wins the board. Only the bag gets hurt, he’s fine.',
   punchStart: 'GLOVES ON',
   punchDone: n => n >= 400 ? 'Thumb of steel. Please hydrate.' : n >= 250 ? 'Okay, gym bro.' : n >= 120 ? 'Solid warm-up.' : 'Gentle. The bag felt a breeze.',

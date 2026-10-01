@@ -196,7 +196,7 @@ function renderSheet() {
   const open = openHunts();
   if (!open.length) {
     el.innerHTML = `<div class="panel"><h3>${esc(T.noHunts)}</h3><p class="muted" style="margin:6px 0 10px">${esc(T.noHuntsSub)}</p>
-      <div class="row"><button class="btn teal" id="wBtn" style="font-size:15px">🔨 WHACK</button><button class="btn teal" id="pBtn" style="font-size:15px">🥊 PUNCH BAG</button></div><button class="btn ghost" data-go="scene" style="margin-top:8px">📍 THE SCENE</button></div>`;
+      <div class="row"><button class="btn teal" id="wBtn" style="font-size:15px">🔨 WHACK</button><button class="btn teal" id="pBtn" style="font-size:15px">🥊 PUNCH</button></div><button class="btn ghost" data-go="scene" style="margin-top:8px">📍 THE SCENE</button></div>`;
     el.querySelector('[data-go]').onclick = () => go('scene'); $('#wBtn').onclick = startWhack; $('#pBtn').onclick = startPunch;
     return;
   }
@@ -213,7 +213,7 @@ function renderSheet() {
     <p class="speed" id="speedLine">${speedLine(h)}</p>
     <p class="small muted" style="margin:2px 0 10px">${h.pending ? '⏳ ' + esc(T.pending) : esc(T.tries(triesLeft))} · ${esc(T.safetyShort)}</p>
     <button class="btn pink" id="scanBtn" ${h.pending || triesLeft <= 0 ? 'disabled' : ''}>📸 ${esc(T.scan)}</button>
-    <div class="row" style="margin-top:8px"><button class="btn teal" id="wBtn" style="min-height:46px;font-size:15px">🔨 WHACK</button><button class="btn teal" id="pBtn" style="min-height:46px;font-size:15px">🥊 PUNCH BAG</button></div>
+    <div class="row" style="margin-top:8px"><button class="btn teal" id="wBtn" style="min-height:46px;font-size:15px">🔨 WHACK</button><button class="btn teal" id="pBtn" style="min-height:46px;font-size:15px">🥊 PUNCH</button></div>
   </div>`;
   el.querySelectorAll('[data-h]').forEach(b => (b.onclick = () => { selHunt = b.dataset.h; renderSheet(); }));
   $('#scanBtn').onclick = () => scan(h); $('#wBtn').onclick = startWhack; $('#pBtn').onclick = startPunch;
