@@ -1,5 +1,6 @@
 // GYANU HUNT · the player app. Vanilla JS, no framework, one module graph.
 import { CONFIG, ZONES, SCENE_CATS } from './config.js';
+import { ROACHES, roachSvg, ensureSprite } from './roaches.js';
 import { T, SLOGANS, SLOGAN_SETS, SLOGAN_LANGS, defaultSloganLang, scriptOf, RULES_COPY, INTRO, TOUR, gsay } from './copy.js';
 import { RULES, speedBonus } from './rules.js';
 import { backend, cleanNick, cleanSlogan } from './backend.js';
@@ -22,7 +23,9 @@ const ago = t => { const s = Math.max(0, Math.round((serverNow() - t) / 1000)); 
 const buzz = p => { try { navigator.vibrate?.(p); } catch {} };
 const AV = ['#FF2E88', '#FFD400', '#00A99D', '#FF8A1F', '#2B59C3', '#6B3FA0'];
 const AVP = ['', 'repeating-linear-gradient(45deg,rgba(0,0,0,.14) 0 4px,transparent 4px 9px)', 'radial-gradient(rgba(0,0,0,.18) 1.5px,transparent 2px) 0 0/7px 7px', 'linear-gradient(transparent 55%,rgba(0,0,0,.16) 55%)'];
-const avatar = (a, nick, size = 40) => `<div class="av" style="width:${size}px;height:${size}px;background:${AV[a?.c ?? 0]};background-image:${AVP[a?.p ?? 0] || 'none'};color:${(a?.c ?? 0) === 1 ? '#15131A' : '#fff'}">${esc((nick || '?')[0])}</div>`;
+const avatar = (a, nick, size = 40) => a && Number.isInteger(a.r)
+  ? `<div class="av roachav" style="width:${size}px;height:${size}px;background:${ROACHES[a.r % ROACHES.length].bg}" role="img" aria-label="${esc(nick || '')} roach">${roachSvg(a.r)}</div>`
+  : `<div class="av" style="width:${size}px;height:${size}px;background:${AV[a?.c ?? 0]};background-image:${AVP[a?.p ?? 0] || 'none'};color:${(a?.c ?? 0) === 1 ? '#15131A' : '#fff'}">${esc((nick || '?')[0])}</div>`;
 
 let offset = 0; const serverNow = () => Date.now() + offset;
 let st = null;                       // last server state
@@ -569,9 +572,9 @@ function renderRules() {
 async function renderProfile() {
   const me = st.me, v = $('#v-profile');
   let hist = []; try { hist = await backend.history(); } catch {}
-  v.innerHTML = `<div class="row" style="margin-bottom:14px">${avatar(me.avatar, me.nick, 64)}<div><div class="d" style="font-size:28px">${esc(me.nick)}</div><div class="small muted">hunter since today · rank #${me.rank || '—'}</div></div></div>
+  v.innerHTML = `<div class="row" style="margin-bottom:14px"><button class="avbtn" id="chRoach" aria-label="Change my roach">${avatar(me.avatar, me.nick, 72)}<span class="avedit">✏️</span></button><div><div class="d" style="font-size:28px">${esc(me.nick)}</div><div class="small muted">hunter since today · rank #${me.rank || '—'}</div></div></div>
     <p style="margin:6px 0 34px"><span class="placard" id="myPlac">${esc(me.slogan || 'no slogan (yet)')}</span></p>
-    <button class="btn ghost" id="editSl">✏️ CHANGE MY PLACARD</button>
+    <div class="stack"><button class="btn ghost" id="editRoach">🪳 PICK MY ROACH</button><button class="btn ghost" id="editSl">✏️ CHANGE MY PLACARD</button></div>
     <div class="stats" style="margin-top:14px"><div><b>${fmt(me.score)}</b><span>points</span></div><div><b>${me.finds}</b><span>found</span></div><div><b>${me.bestStreak}</b><span>best streak</span></div><div><b>${me.homeBest}</b><span>whack best</span></div></div>
     <div class="stack" style="margin:14px 0"><button class="btn pink" id="pShare">${esc(T.share)}</button><button class="btn ghost" id="pW">🔨 ${esc(T.homeTitle)}</button></div>
     <h3 class="d" style="font-size:18px;margin:16px 0 6px">MY CATCHES</h3>
@@ -579,6 +582,16 @@ async function renderProfile() {
     <div class="panel" style="margin-top:20px"><b>Your data</b><p class="small" style="margin:6px 0 12px">We keep your nickname, slogan, score and tiny photo copies (deleted within ${CONFIG.photoRetentionHours}h). No phone number on display, no GPS, no gallery access.</p>
     <button class="btn" style="background:var(--red);color:#fff" id="delMe">${esc(T.deleteBtn)}</button></div>`;
   $('#pShare').onclick = () => doShare(); $('#pW').onclick = startWhack;
+  $('#chRoach').onclick = $('#editRoach').onclick = () => {
+    const cur = me.avatar?.r;
+    const o = layer(`<h2 class="big" style="font-size:34px">PICK YOUR ROACH</h2><p class="small" style="margin:8px 0 14px">This is your face on the leaderboard.</p>
+      <div class="roachgrid">${ROACHES.map((r, i) => `<button class="roachpick${i === cur ? ' on' : ''}" data-r="${i}"><span class="av roachav" style="background:${r.bg}">${roachSvg(i)}</span><b>${r.name}</b></button>`).join('')}</div>
+      <div class="sw stack" style="margin-top:14px"><button class="link" style="color:#fff" id="rcX">cancel</button></div>`);
+    o.querySelector('#rcX').onclick = () => o.remove();
+    o.querySelectorAll('[data-r]').forEach(b => (b.onclick = async () => {
+      try { await backend.setRoach(+b.dataset.r); play('pop'); buzz(15); o.remove(); await refresh(); renderProfile?.(); } catch (e) { toast(e.message, 1800); }
+    }));
+  };
   $('#editSl').onclick = () => {
     let pl = defaultSloganLang();
     const o = layer(`<h2 class="big" style="font-size:34px">NEW PLACARD</h2><div class="langtabs" id="pLangs" style="justify-content:center;margin-top:10px"></div><div class="slogans" id="pSl" style="justify-content:center;margin:12px 0"></div>
@@ -738,6 +751,7 @@ function runPunch() {
 
 // ---------------------------------------------------------------- boot
 function boot() {
+  ensureSprite();
   fillStatic();
   $('#playBtn').onclick = () => showJoin(false);
   $('#homeLink').onclick = () => showJoin(true);

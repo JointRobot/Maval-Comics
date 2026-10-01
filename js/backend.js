@@ -34,9 +34,9 @@ export function cleanSlogan(raw) {
   if (/[^\u0000-\u024F\u2000-\u2BFF\uFE0F\u{1F000}-\u{1FAFF}]/u.test(s) && !PRESETS.has(s)) return { error: 'Custom placards need English letters. Pick a ready-made one for Tamil, Bengali, Marathi or Hindi.' };
   return { slogan: s };
 }
-export const avatarFor = id => {
+export const avatarFor = (id, roach) => {
   let h = 0; for (const ch of String(id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return { c: h % 6, p: (h >> 3) % 4 };
+  return { c: h % 6, p: (h >>> 3) % 4, r: Number.isInteger(roach) && roach >= 0 && roach < 10 ? roach : (h >>> 5) % 10 };
 };
 const cleanNote = s => String(s || '').replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60);
 
@@ -110,6 +110,11 @@ export class LocalBackend {
     db.players.push(p); this.save(db);
     localStorage.setItem(ME, JSON.stringify({ id, token: uid('t_') }));
     return { id, nick, avatar: p.avatar, slogan: p.slogan };
+  }
+  async setRoach(n) {
+    const db = this.load(); const me = this.me(db); if (!me) throw new Error('Join first');
+    n = Math.floor(Number(n)); if (!(n >= 0 && n < 10)) throw new Error('Pick one of the ten roaches.');
+    me.roach = n; me.avatar = avatarFor(me.id, n); this.save(db); return me.avatar;
   }
   async setSlogan(raw) {
     const s = cleanSlogan(raw); if (s.error) throw new Error(s.error);
@@ -516,10 +521,11 @@ export class SupabaseBackend {
     localStorage.setItem(ME, JSON.stringify({ id: r.id, token: r.token }));
     return { id: r.id, nick: r.nick, avatar: avatarFor(r.id), slogan: s.slogan };
   }
+  async setRoach(n) { n = Math.floor(Number(n)); if (!(n >= 0 && n < 10)) throw new Error('Pick one of the ten roaches.'); await this.rpc('gh_set_roach', { p_token: this.tok(), p_roach: n }); return avatarFor(this.meId(), n); }
   async setSlogan(raw) { const s = cleanSlogan(raw); if (s.error) throw new Error(s.error); await this.rpc('gh_set_slogan', { p_token: this.tok(), p_slogan: s.slogan }); return s.slogan; }
   async state() {
     const s = await this.rpc('gh_state', { p_token: this.tok() });
-    if (s.me) s.me.avatar = avatarFor(s.me.id);
+    if (s.me) s.me.avatar = avatarFor(s.me.id, s.me.roach);
     return s;
   }
   async ack(ids) { return this.rpc('gh_ack', { p_token: this.tok(), p_ids: ids }); }
@@ -537,7 +543,7 @@ export class SupabaseBackend {
   async vote(id, kind) { return this.rpc('gh_vote', { p_token: this.tok(), p_id: id, p_kind: kind }); }
   async leaderboard(scope = 'global') {
     const r = await this.rpc('gh_leaderboard', { p_token: this.tok(), p_scope: scope });
-    r.rows = (r.rows || []).map(x => ({ ...x, avatar: avatarFor(x.id) }));
+    r.rows = (r.rows || []).map(x => ({ ...x, avatar: avatarFor(x.id, x.roach) }));
     return r;
   }
   async history() { return this.rpc('gh_history', { p_token: this.tok() }); }
