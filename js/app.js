@@ -814,10 +814,12 @@ function openBuyCalls() {
 function boot() {
   ensureSprite();
   fillStatic();
-  $('#playBtn').onclick = () => showJoin(false);
-  $('#homeLink').onclick = () => showJoin(true);
+  const back = !!backend.meId(); // returning players still see the start screen, and tap to continue (it used to flash past)
+  if (back) $('#playBtn').textContent = 'CONTINUE THE HUNT';
+  $('#playBtn').onclick = () => (back ? enterGame() : showJoin(false));
+  $('#homeLink').onclick = () => (back ? (enterGame(), setTimeout(startWhack, 700)) : showJoin(true));
   $('#status').addEventListener('click', e => { if (e.target.closest('[data-crowd]')) openCrowd(); else if (e.target.closest('[data-call]')) openCall(); });
-  if (!backend.meId()) landingCrowd();
+  landingCrowd();
   $('#introBtn').onclick = () => runTour(INTRO, { autoChoice: true, doneLabel: 'LET’S PLAY' });
   setInterval(() => { // Gyanu pops up now and then with a share-what-you-know nudge
     if (document.hidden || $('#game').classList.contains('hide') || $('#layer').children.length || tourOpen() || whack || document.querySelector('.gtip')) return;
@@ -834,7 +836,6 @@ function boot() {
   $('#sndBtn').onclick = () => { setMuted(!sfxState.muted); paintSnd(); if (!sfxState.muted) play('pop'); }; paintSnd();
   let deb = 0; backend.on(() => { clearTimeout(deb); deb = setTimeout(refresh, 120); });
   setInterval(() => { if (!document.hidden && st && (backend.kind === 'local' || (st.hype && serverNow() < st.hype.endsAt + 6000))) refresh(); }, backend.kind === 'local' ? 2500 : 2000);
-  if (backend.meId()) enterGame();
   if ('serviceWorker' in navigator && location.protocol !== 'file:') { const had = !!navigator.serviceWorker.controller; navigator.serviceWorker.register('sw.js').catch(() => {}); let rl = false; navigator.serviceWorker.addEventListener('controllerchange', () => { if (had && !rl && !document.querySelector('.ov, .tour')) { rl = true; location.reload(); } }); }
   if (new URLSearchParams(location.search).get('mode') === 'home' && !backend.meId()) showJoin(true);
 }
