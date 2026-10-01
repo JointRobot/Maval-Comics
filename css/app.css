@@ -105,7 +105,7 @@ input.field:focus{box-shadow:0 0 0 4px var(--yellow)}
 .cam .x{color:#fff;font:16px var(--display);padding:12px}
 
 /* overlays */
-.ov{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;background:rgba(21,19,26,.93);color:#fff;overflow:auto}
+.ov{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;background:rgba(21,19,26,.97);color:#fff;overflow:auto}
 .ov.burst::before{content:'';position:absolute;inset:-50%;background:repeating-conic-gradient(rgba(255,212,0,.16) 0 9deg,transparent 9deg 22deg);animation:spin 14s linear infinite;pointer-events:none}
 @keyframes spin{to{transform:rotate(360deg)}}
 .ov>*{position:relative}
@@ -317,3 +317,17 @@ html,body{position:fixed;inset:0;width:100%;height:100%;overflow:hidden;overscro
 .roachpick .av{width:84px;height:84px;border-radius:16px;border-width:3px}
 .roachpick.on{border-color:var(--yellow);background:rgba(255,212,0,.15)}
 .roachpick:active{transform:scale(.96)}
+
+/* ---------- call the crowd */
+.callchip{background:var(--pink)!important;color:#fff!important;border:2px solid var(--ink)!important}
+.callkinds{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:100%;max-width:340px}
+.callkind{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 2px;border-radius:12px;border:3px solid #4a4256;color:#fff;font:12px var(--display);background:rgba(255,255,255,.06)}
+.callkind i{font-style:normal;font-size:24px}.callkind.on{border-color:var(--yellow);background:rgba(255,212,0,.18);color:var(--yellow)}
+.chantlist{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-height:116px;overflow:auto;width:100%;max-width:360px}
+.chantlist .chip{font-size:12px;padding:6px 10px;background:#fff;color:var(--ink);border:2px solid var(--ink)}
+
+/* overlays: children never get squashed (language tabs were being crushed), inputs are readable */
+.ov>*{flex-shrink:0}
+.langtabs{flex:none;min-height:46px;max-width:100%}
+.ov .field{color:var(--ink);background:#fff}
+.chantlist{flex:none}

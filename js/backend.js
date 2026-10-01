@@ -8,8 +8,8 @@
 import { CONFIG, ZONES, SCENE_CATS } from './config.js';
 import { RULES, scoreFind } from './rules.js';
 import { hamming } from './verify.js';
-import { SLOGANS } from './copy.js';
-const PRESETS = new Set(SLOGANS);
+import { SLOGANS, CHANTS, CALL_KINDS } from './copy.js';
+const PRESETS = new Set([...SLOGANS, ...CHANTS]);
 
 const uid = (p = '') => p + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4);
 const now = () => Date.now();
@@ -125,7 +125,7 @@ export class LocalBackend {
   hypeView(db, meId) {
     const h = db.settings.hype; if (!h) return null;
     const n = Object.keys(h.contrib || {}).length;
-    return { id: h.id, kind: h.kind, text: h.text, startedAt: h.startedAt, endsAt: h.endsAt, done: h.done, doneAt: h.doneAt, failed: !h.done && now() > h.endsAt,
+    return { id: h.id, kind: h.kind, text: h.text, startedAt: h.startedAt, endsAt: h.endsAt, by: h.byNick || null, done: h.done, doneAt: h.doneAt, failed: !h.done && now() > h.endsAt,
       progress: h.kind === 'lights' ? 0 : Math.min(1, h.total / (h.goal * Math.max(1, n))), joined: n, iJoined: !!(meId && h.contrib?.[meId]) };
   }
   stats(db) {
@@ -165,7 +165,7 @@ export class LocalBackend {
       me: me && {
         id: me.id, nick: me.nick, slogan: me.slogan, avatar: me.avatar, score: me.score, finds: me.finds, streak: me.streak, bestStreak: me.bestStreak,
         banned: me.banned, rank: (board.findIndex(r => r.id === me.id) + 1) || null, players: board.length,
-        lastSubmitAt: me.lastSubmitAt, notices: me.notices || [], homeBest: me.homeBest || 0, punchBest: me.punchBest || 0
+        lastSubmitAt: me.lastSubmitAt, notices: me.notices || [], homeBest: me.homeBest || 0, punchBest: me.punchBest || 0, callsLeft: Math.max(0, RULES.callsPerPlayer - (me.calls || 0))
       }
     };
   }
@@ -248,6 +248,11 @@ export class LocalBackend {
     const n = Object.keys(h.contrib).length;
     if (h.total >= h.goal * n) { // the crowd did it
       h.done = true; h.doneAt = now(); db.settings.hypeWins = (db.settings.hypeWins || 0) + 1;
+      if (h.by) { // the person who called it earns energy points for every phone they got moving
+        const caller = db.players.find(x => x.id === h.by);
+        const bonus = Math.min(RULES.callBonusCap, n * RULES.callBonusPerPhone);
+        if (caller && bonus > 0 && h.kind !== 'lights') { caller.score += bonus; caller.notices = [...(caller.notices || []), { id: uid('n_'), kind: 'hypecall', points: bonus, joined: n }]; }
+      }
       for (const pid of Object.keys(h.contrib)) {
         const p = db.players.find(x => x.id === pid); if (!p || h.contrib[pid] < 1) continue;
         p.score += RULES.hypePoints;
@@ -256,6 +261,28 @@ export class LocalBackend {
     }
     this.save(db);
     return this.hypeView(db, me.id);
+  }
+
+  // ---------- call the crowd: any player may start a moment (5 each)
+  async callCrowd(kind, text) {
+    const db = this.load(); const me = this.me(db); if (!me) throw new Error('Join first');
+    const no = reason => ({ ok: false, reason });
+    if (me.banned) return no('Your account is paused.');
+    if (db.settings.paused || db.settings.ended) return no('Calls are paused right now.');
+    if (!['chant', 'shake', 'statue', 'lights'].includes(kind)) return no('Pick a move first.');
+    if ((me.calls || 0) >= RULES.callsPerPlayer) return no(`All ${RULES.callsPerPlayer} calls used. Join the others now 🪳`);
+    if (now() - (me.lastCallAt || 0) < RULES.callCooldownSec * 1000) return no('Easy, caller. Wait a minute before your next one.');
+    const live = db.settings.hype;
+    if (live && !live.done && now() < live.endsAt) return no('A moment is already live. Go join it!');
+    if (live && now() - (live.doneAt || live.endsAt) < RULES.callGapSec * 1000) return no('Let the crowd catch its breath, try again in a few seconds.');
+    let s = cleanSlogan(text); if (s.error) return no(s.error.replace('placard', 'chant'));
+    let line = s.slogan; if (!line) line = (CALL_KINDS.find(k => k.id === kind) || {}).line || 'GYANU BAHAR AAO!';
+    if (!PRESETS.has(line)) line = line.slice(0, 40);
+    me.calls = (me.calls || 0) + 1; me.lastCallAt = now();
+    const dur = kind === 'lights' ? 20 : RULES.callDurSec;
+    db.settings.hype = { id: uid('h_'), kind, text: line, by: me.id, byNick: me.nick, startedAt: now(), endsAt: now() + dur * 1000, goal: RULES.hypeGoalPerPhone, total: 0, contrib: {}, last: {}, done: false };
+    this.save(db);
+    return { ok: true, left: RULES.callsPerPlayer - me.calls };
   }
 
   // ---------- whack-a-Gyanu (at home)
@@ -456,7 +483,7 @@ export class LocalBackend {
       case 'clearSlogan': { const p = P(a.id); if (p) p.slogan = ''; break; }
       case 'ban': { const p = P(a.id); if (p) p.banned = !!a.on; break; }
       case 'resetScores':
-        db.players.forEach(p => { p.score = 0; p.finds = 0; p.streak = 0; p.bestStreak = 0; p.lastZone = null; p.todayBase = 0; p.notices = []; p.homeBest = 0; p.punchBest = 0; });
+        db.players.forEach(p => { p.score = 0; p.finds = 0; p.streak = 0; p.bestStreak = 0; p.lastZone = null; p.todayBase = 0; p.notices = []; p.homeBest = 0; p.punchBest = 0; p.calls = 0; });
         db.subs.forEach(s => { s.status = 'void'; s.thumb = null; });
         db.gyanus.forEach(g => { g.finds = 0; g.claimedBy = null; });
         db.settings.ended = false; db.settings.winner = null; db.settings.hypeWins = 0;
@@ -537,6 +564,7 @@ export class SupabaseBackend {
   }
   async hype(level) { return this.rpc('gh_hype', { p_token: this.tok(), p_level: level }); }
   async homeScore(n) { return this.rpc('gh_home_score', { p_token: this.tok(), p_score: n }); }
+  async callCrowd(kind, text) { const s = cleanSlogan(text); if (s.error) return { ok: false, reason: s.error.replace('placard', 'chant') }; return this.rpc('gh_call_crowd', { p_token: this.tok(), p_kind: kind, p_text: s.slogan }); }
   async punchScore(n) { return this.rpc('gh_punch_score', { p_token: this.tok(), p_score: n }); }
   async scene() { return this.rpc('gh_scene', { p_token: this.tok() }); }
   async report(r) { return this.rpc('gh_report', { p_token: this.tok(), p_cat: r.cat, p_zone: r.zone, p_note: cleanNote(r.note) }); }

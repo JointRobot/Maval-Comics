@@ -207,3 +207,15 @@ export const GSAYS = [
   ['जो पता है, वो बताओ। यही असली हीरो वाला काम है', 'Gyanu bhi yahi kehta hai. Probably.']
 ];
 export const gsay = () => GSAYS[Math.floor(Math.random() * GSAYS.length)];
+
+// ---- Call the crowd: ready-made chants (any language; custom ones must be English letters)
+export const CHANTS = [
+  'GYANU BAHAR AAO!', 'EK DO TEEN CHAAR, GYANU AB TOH HAAR', 'SODA LEMON GINGER POP!', 'GYANU, LOG OUT!', 'SCROLL CHHOD, GYANU PAKAD',
+  'ज्ञानू बाहर आओ!', 'ஞானு, ஞானு… வெளியே வா!', 'জ্ঞানুদা, বেরিয়ে এসো!', 'ज्ञानूभाऊ, बाहेर या!'
+];
+export const CALL_KINDS = [
+  { id: 'chant',  emoji: '🎤', label: 'CHANT', hint: 'Everyone shouts it. Mic loudness fills the meter (audio never leaves the phone).', line: 'GYANU BAHAR AAO!' },
+  { id: 'shake',  emoji: '📳', label: 'JUMP', hint: 'Jump or shake in place. Phone motion fills the meter.', line: 'JUMP JUMP JUMP!' },
+  { id: 'statue', emoji: '🧍', label: 'FREEZE', hint: 'Everyone freezes. Stillness fills the meter.', line: 'FREEZE. NOBODY MOVES.' },
+  { id: 'lights', emoji: '🔦', label: 'LIGHTS', hint: 'Every screen pulses together. Calm, pretty, no points.', line: 'LIGHT IT UP 🔦' }
+];

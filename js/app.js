@@ -1,6 +1,7 @@
 // GYANU HUNT · the player app. Vanilla JS, no framework, one module graph.
 import { CONFIG, ZONES, SCENE_CATS } from './config.js';
 import { ROACHES, roachSvg, ensureSprite } from './roaches.js';
+import { CHANTS, CALL_KINDS } from './copy.js';
 import { T, SLOGANS, SLOGAN_SETS, SLOGAN_LANGS, defaultSloganLang, scriptOf, RULES_COPY, INTRO, TOUR, gsay } from './copy.js';
 import { RULES, speedBonus } from './rules.js';
 import { backend, cleanNick, cleanSlogan } from './backend.js';
@@ -174,7 +175,7 @@ function renderStatus(offline) {
   const s = st?.stats, chips = [];
   if (offline) chips.push(`<span class="chip alert">📶 weak network — retrying</span>`);
   if (st?.settings.finalLive) chips.push(`<span class="chip alert">FINAL GYANU LIVE</span>`);
-  if (s) chips.push(`<span class="chip">🟢 ${s.online} hunting</span>`, `<span class="chip">🎯 ${s.caught} caught today</span>`, `<button class="chip crowdchip" data-crowd="1">🪧 ${fmt(s.crowd || 0)} in the crowd</button>`);
+  if (s) chips.push(`<span class="chip">🟢 ${s.online} hunting</span>`, `<span class="chip">🎯 ${s.caught} caught today</span>`, `<button class="chip crowdchip" data-crowd="1">🪧 ${fmt(s.crowd || 0)} in the crowd</button>`, `<button class="chip crowdchip callchip" data-call="1">📣 CALL THE CROWD · ${st.me?.callsLeft ?? 5}</button>`);
   if (s?.busy?.length) chips.push(`<span class="chip alert">⚠️ busy: ${s.busy.map(z => ZONES.find(q => q.id === z)?.short).join(', ')}</span>`);
   $('#status').innerHTML = chips.join('');
 }
@@ -199,8 +200,8 @@ function renderSheet() {
   const open = openHunts();
   if (!open.length) {
     el.innerHTML = `<div class="panel"><h3>${esc(T.noHunts)}</h3><p class="muted" style="margin:6px 0 10px">${esc(T.noHuntsSub)}</p>
-      <div class="row"><button class="btn teal" id="wBtn" style="font-size:15px">🔨 WHACK</button><button class="btn teal" id="pBtn" style="font-size:15px">🥊 PUNCH</button></div><button class="btn ghost" data-go="scene" style="margin-top:8px">📍 THE SCENE</button></div>`;
-    el.querySelector('[data-go]').onclick = () => go('scene'); $('#wBtn').onclick = startWhack; $('#pBtn').onclick = startPunch;
+      <div class="row"><button class="btn teal" id="wBtn" style="font-size:14px">🔨 WHACK</button><button class="btn teal" id="pBtn" style="font-size:14px">🥊 PUNCH</button><button class="btn pink" id="cBtn" style="font-size:14px">📣 CALL</button></div><button class="btn ghost" data-go="scene" style="margin-top:8px">📍 THE SCENE</button></div>`;
+    el.querySelector('[data-go]').onclick = () => go('scene'); $('#wBtn').onclick = startWhack; $('#pBtn').onclick = startPunch; $('#cBtn').onclick = openCall;
     return;
   }
   if (!open.some(h => h.id === selHunt)) selHunt = open[0].id;
@@ -216,10 +217,10 @@ function renderSheet() {
     <p class="speed" id="speedLine">${speedLine(h)}</p>
     <p class="small muted" style="margin:2px 0 10px">${h.pending ? '⏳ ' + esc(T.pending) : esc(T.tries(triesLeft))} · ${esc(T.safetyShort)}</p>
     <button class="btn pink" id="scanBtn" ${h.pending || triesLeft <= 0 ? 'disabled' : ''}>📸 ${esc(T.scan)}</button>
-    <div class="row" style="margin-top:8px"><button class="btn teal" id="wBtn" style="min-height:46px;font-size:15px">🔨 WHACK</button><button class="btn teal" id="pBtn" style="min-height:46px;font-size:15px">🥊 PUNCH</button></div>
+    <div class="row" style="margin-top:8px"><button class="btn teal" id="wBtn" style="min-height:46px;font-size:14px">🔨 WHACK</button><button class="btn teal" id="pBtn" style="min-height:46px;font-size:14px">🥊 PUNCH</button><button class="btn pink" id="cBtn" style="min-height:46px;font-size:14px">📣 CALL</button></div>
   </div>`;
   el.querySelectorAll('[data-h]').forEach(b => (b.onclick = () => { selHunt = b.dataset.h; renderSheet(); }));
-  $('#scanBtn').onclick = () => scan(h); $('#wBtn').onclick = startWhack; $('#pBtn').onclick = startPunch;
+  $('#scanBtn').onclick = () => scan(h); $('#wBtn').onclick = startWhack; $('#pBtn').onclick = startPunch; $('#cBtn').onclick = openCall;
   coolTick();
 }
 // After a shot, the button counts down the cooldown instead of letting people spam.
@@ -356,6 +357,7 @@ async function handleNotices() {
   for (const x of n) {
     if (x.kind === 'approved') showResult({ status: 'approved', points: x.points, parts: x.parts, streak: x.streak, special: x.special }, null, true);
     else if (x.kind === 'rejected') toast('❌ ' + T.rejected, 4000);
+    else if (x.kind === 'hypecall') { confetti(30); play('cash'); toast(`📣 Your call moved ${x.joined} phone${x.joined === 1 ? '' : 's'}: +${x.points} energy points`, 4500); }
   }
 }
 
@@ -430,7 +432,7 @@ function renderHype() {
   }
   if (!hypeEl.dataset.built) {
     hypeEl.dataset.built = 1;
-    hypeEl.innerHTML = `<p class="tag classic">HYPE MOMENT</p><h2 class="d" style="font-size:26px;margin-top:10px;color:#fff">${esc(c.title)}</h2>
+    hypeEl.innerHTML = `<p class="tag classic">${h.by ? '📣 ' + esc(h.by) + ' CALLED THE CROWD' : 'HYPE MOMENT'}</p><h2 class="d" style="font-size:26px;margin-top:10px;color:#fff">${esc(c.title)}</h2>
       <p class="chant">${esc(h.text)}</p><p style="margin-bottom:14px">${esc(c.how)}</p>
       ${h.kind !== 'lights' ? `<div class="meter"><i id="hyMeter"></i></div><p class="small" style="margin:6px 0" id="hyCount"></p><div class="meter me hide" id="hyMeBox"><i id="hyMe"></i></div>` : ''}
       <div class="sw" style="margin-top:14px"><button class="btn pink" id="hyJoin">${esc(c.join)}</button></div>
@@ -563,9 +565,9 @@ function renderRules() {
     <h3>Hype Moments</h3><p>Sometimes the crew drops a moment on everyone’s phone: chant, shake, freeze or a phone-light show. Fill the shared meter together and everyone who joined gets +${RULES.hypePoints}. Always in place — no running, no pushing.</p>
     <h3>The Scene</h3><p>Drop live info — food, water, toilets, medic, charging, shade, exits, crowded spots. +${RULES.reportPoints} per new pin (max ${RULES.reportCapPerHour}/hr), +${RULES.confirmPoints} when others confirm yours.</p>
     <div style="margin:18px 0 8px" class="stack"><button class="btn pink" id="rFb">💬 SPILL THE CHAI: BUG / IDEA / RANT</button><button class="btn ghost" id="rTour">👆 REPLAY THE HAND-HELD TOUR</button><button class="btn ghost" id="rIntro">🎧 LISTEN: 40-SEC HOW TO PLAY</button></div>
-    <div style="margin:8px 0 18px" class="stack"><button class="btn ghost" id="rW">🔨 ${esc(T.homeTitle)}</button><button class="btn ghost" id="rP">🥊 ${esc(T.punchTitle)}</button></div>`;
+    <div style="margin:8px 0 18px" class="stack"><button class="btn ghost" id="rW">🔨 ${esc(T.homeTitle)}</button><button class="btn ghost" id="rP">🥊 ${esc(T.punchTitle)}</button><button class="btn ghost" id="rC">📣 CALL THE CROWD</button></div>`;
   $('#v-rules').insertAdjacentHTML('beforeend', `<p class="foot-credit">${esc(CONFIG.credit)} · v${esc(CONFIG.version)}</p>`);
-  $('#rW').onclick = startWhack; $('#rP').onclick = startPunch;
+  $('#rW').onclick = startWhack; $('#rP').onclick = startPunch; $('#rC').onclick = openCall;
   $('#rFb').onclick = () => openFeedback({ screen: () => 'rules' }); $('#rTour').onclick = startTour; $('#rIntro').onclick = () => runTour(INTRO, { autoChoice: true, doneLabel: 'BACK TO THE HUNT' });
 }
 
@@ -749,13 +751,47 @@ function runPunch() {
   };
 }
 
+// ---------------------------------------------------------------- call the crowd (every player gets 5)
+function openCall() {
+  if (!st) return;
+  let kind = 'chant', line = CALL_KINDS[0].line;
+  const left = st.me.callsLeft ?? 0;
+  const o = layer(`<h2 class="big" style="font-size:34px">CALL THE CROWD</h2>
+    <p class="small" style="margin:8px 0 4px">Send one move to every phone. Everyone who joins gets points, and you earn energy points for every phone you get moving.</p>
+    <p class="tag classic" style="margin:6px 0 10px">${left} OF ${RULES.callsPerPlayer} CALLS LEFT</p>
+    <div class="callkinds" id="ckinds">${CALL_KINDS.map(k => `<button class="callkind${k.id === kind ? ' on' : ''}" data-k="${k.id}"><i>${k.emoji}</i>${k.label}</button>`).join('')}</div>
+    <p class="small" id="ckhint" style="margin:8px 0 10px">${esc(CALL_KINDS[0].hint)}</p>
+    <div class="chantlist" id="cchants">${CHANTS.map(t => `<button class="chip" data-t="${esc(t)}">${esc(t)}</button>`).join('')}</div>
+    <input class="field" id="cText" maxlength="40" value="${esc(line)}" style="margin:10px 0 4px;text-align:center" aria-label="Your chant">
+    <p class="small muted" style="color:#CFC6B8">Type your own in English letters, or tap a ready-made one. Keep it fun, not nasty.</p>
+    <p class="err" id="cErr" style="min-height:18px"></p>
+    <div class="sw stack"><button class="btn pink" id="cGo" ${left ? '' : 'disabled'}>📣 SEND TO EVERY PHONE</button><button class="link" style="color:#fff" id="cX">cancel</button></div>`);
+  const text = o.querySelector('#cText');
+  o.querySelector('#cX').onclick = () => o.remove();
+  o.querySelectorAll('[data-k]').forEach(b => (b.onclick = () => {
+    const prev = CALL_KINDS.find(k => k.id === kind); kind = b.dataset.k; const k = CALL_KINDS.find(x => x.id === kind);
+    o.querySelectorAll('[data-k]').forEach(x => x.classList.toggle('on', x === b)); o.querySelector('#ckhint').textContent = k.hint;
+    if (!text.value || text.value === prev.line) text.value = k.line; // keep a line the player typed
+    play('tap');
+  }));
+  o.querySelectorAll('[data-t]').forEach(b => (b.onclick = () => { text.value = b.dataset.t; play('tap'); }));
+  o.querySelector('#cGo').onclick = async () => {
+    const btn = o.querySelector('#cGo'), err = o.querySelector('#cErr'); err.textContent = ''; btn.disabled = true;
+    try {
+      const r = await backend.callCrowd(kind, text.value);
+      if (!r.ok) { err.textContent = r.reason; btn.disabled = false; return; }
+      o.remove(); play('horn'); buzz([30, 40, 30]); toast('📣 SENT TO EVERY PHONE', 2200); await refresh();
+    } catch (e) { err.textContent = e.message; btn.disabled = false; }
+  };
+}
+
 // ---------------------------------------------------------------- boot
 function boot() {
   ensureSprite();
   fillStatic();
   $('#playBtn').onclick = () => showJoin(false);
   $('#homeLink').onclick = () => showJoin(true);
-  $('#status').addEventListener('click', e => { if (e.target.closest('[data-crowd]')) openCrowd(); });
+  $('#status').addEventListener('click', e => { if (e.target.closest('[data-crowd]')) openCrowd(); else if (e.target.closest('[data-call]')) openCall(); });
   if (!backend.meId()) landingCrowd();
   $('#introBtn').onclick = () => runTour(INTRO, { autoChoice: true, doneLabel: 'LET’S PLAY' });
   setInterval(() => { // Gyanu pops up now and then with a share-what-you-know nudge

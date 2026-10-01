@@ -6,7 +6,7 @@ const PIN = '2468';
 const $ = s => document.querySelector(s);
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const css = `
-#demoBtn{position:absolute;right:10px;top:calc(var(--top) + 38px + 96px);z-index:25;font:12px var(--display);background:var(--ink);color:var(--yellow);border:2.5px solid var(--yellow);border-radius:8px;padding:8px 10px;box-shadow:3px 3px 0 var(--pink)}
+#demoBtn{position:absolute;left:10px;top:calc(var(--top) + 30px + 114px);z-index:25;font:12px var(--display);background:var(--ink);color:var(--yellow);border:2.5px solid var(--yellow);border-radius:8px;padding:8px 10px;box-shadow:3px 3px 0 var(--pink)}
 #demoPanel{position:absolute;left:10px;right:10px;top:calc(var(--top) + 36px);z-index:45;background:var(--ink);color:#fff;border:3px solid var(--yellow);border-radius:12px;padding:12px;box-shadow:5px 5px 0 var(--pink);max-height:calc(100% - var(--top) - 120px);overflow:auto}
 #demoPanel h4{font:16px var(--display);color:var(--yellow);margin:2px 0 8px}
 #demoPanel p{font-size:12px;color:#CFC6B8;margin:10px 0 6px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
