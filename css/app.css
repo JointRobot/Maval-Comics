@@ -263,3 +263,17 @@ input.field:focus{box-shadow:0 0 0 4px var(--yellow)}
 .wallcard .btn{width:100%;margin-top:8px}
 
 .landing .btn.ghost{position:relative;margin-top:10px;font-size:17px}
+
+/* ---------- punching bag */
+.bagwrap{display:flex;flex-direction:column;align-items:center;transform-origin:50% 0}
+.bagrope{width:6px;height:46px;background:var(--ink);border-radius:3px}
+.bag{width:150px;height:230px;border:4px solid var(--ink);border-radius:30px 30px 44px 44px;background:linear-gradient(90deg,#C81E4B,#FF2E88 45%,#C81E4B);box-shadow:6px 6px 0 var(--ink);display:flex;align-items:center;justify-content:center;padding:0;touch-action:manipulation;transform-origin:50% -46px;cursor:pointer}
+.bag img{width:96px;pointer-events:none;-webkit-user-drag:none}
+.big2 .bag{width:200px;height:300px}.big2 .bag img{width:128px}
+.bag.swing{animation:bagswing .28s ease-out}
+@keyframes bagswing{0%{transform:rotate(0)}25%{transform:rotate(9deg) scale(.97)}60%{transform:rotate(-5deg)}100%{transform:rotate(0)}}
+.punchov{justify-content:center}.punchhud{position:absolute;left:12px;right:12px;top:12px;display:flex}
+.punchhud .chip{background:var(--ink);color:var(--yellow);font:20px var(--display);padding:6px 14px}
+.pw{position:fixed;z-index:60;pointer-events:none;font:22px var(--display);color:var(--yellow);-webkit-text-stroke:1px var(--ink);text-shadow:2px 2px 0 var(--pink);animation:pwup .45s ease-out forwards;transform:translate(-50%,-50%)}
+@keyframes pwup{to{opacity:0;transform:translate(-50%,-120%) scale(1.3)}}
+.tabs{flex-wrap:wrap;row-gap:6px}.tabs .chip{padding:7px 12px;font-size:13px}

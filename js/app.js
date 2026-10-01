@@ -196,8 +196,8 @@ function renderSheet() {
   const open = openHunts();
   if (!open.length) {
     el.innerHTML = `<div class="panel"><h3>${esc(T.noHunts)}</h3><p class="muted" style="margin:6px 0 10px">${esc(T.noHuntsSub)}</p>
-      <button class="btn teal" id="wBtn">🔨 WHACK-A-GYANU · PRACTICE</button><button class="btn ghost" data-go="scene" style="margin-top:8px">📍 THE SCENE</button></div>`;
-    el.querySelector('[data-go]').onclick = () => go('scene'); $('#wBtn').onclick = startWhack;
+      <div class="row"><button class="btn teal" id="wBtn" style="font-size:15px">🔨 WHACK</button><button class="btn teal" id="pBtn" style="font-size:15px">🥊 PUNCH BAG</button></div><button class="btn ghost" data-go="scene" style="margin-top:8px">📍 THE SCENE</button></div>`;
+    el.querySelector('[data-go]').onclick = () => go('scene'); $('#wBtn').onclick = startWhack; $('#pBtn').onclick = startPunch;
     return;
   }
   if (!open.some(h => h.id === selHunt)) selHunt = open[0].id;
@@ -213,10 +213,10 @@ function renderSheet() {
     <p class="speed" id="speedLine">${speedLine(h)}</p>
     <p class="small muted" style="margin:2px 0 10px">${h.pending ? '⏳ ' + esc(T.pending) : esc(T.tries(triesLeft))} · ${esc(T.safetyShort)}</p>
     <button class="btn pink" id="scanBtn" ${h.pending || triesLeft <= 0 ? 'disabled' : ''}>📸 ${esc(T.scan)}</button>
-    <button class="btn teal" id="wBtn" style="margin-top:8px;min-height:46px;font-size:16px">🔨 WHACK-A-GYANU · PRACTICE</button>
+    <div class="row" style="margin-top:8px"><button class="btn teal" id="wBtn" style="min-height:46px;font-size:15px">🔨 WHACK</button><button class="btn teal" id="pBtn" style="min-height:46px;font-size:15px">🥊 PUNCH BAG</button></div>
   </div>`;
   el.querySelectorAll('[data-h]').forEach(b => (b.onclick = () => { selHunt = b.dataset.h; renderSheet(); }));
-  $('#scanBtn').onclick = () => scan(h); $('#wBtn').onclick = startWhack;
+  $('#scanBtn').onclick = () => scan(h); $('#wBtn').onclick = startWhack; $('#pBtn').onclick = startPunch;
   coolTick();
 }
 // After a shot, the button counts down the cooldown instead of letting people spam.
@@ -548,7 +548,7 @@ async function renderBoard(quiet) {
   let b; try { b = await backend.leaderboard(scope); } catch { return; }
   const row = r => `<div class="rowp${r.me ? ' me' : ''}"><div class="rk">${r.rank}</div>${avatar(r.avatar, r.nick)}
     <div class="grow" style="min-width:0"><div class="nk">${esc(r.nick)}</div>${r.slogan ? `<div class="sl">🪧 ${esc(r.slogan)}</div>` : ''}</div><div class="sc">${fmt(r.score)}</div></div>`;
-  const note = scope === 'nearby' ? `<p class="small muted" style="margin-bottom:8px">${esc(T.nearbyHelp(b.zone && zoneName(b.zone)))}</p>` : scope === 'home' ? `<p class="small muted" style="margin-bottom:8px">${esc(T.homeBoardNote)}</p>` : '';
+  const note = scope === 'nearby' ? `<p class="small muted" style="margin-bottom:8px">${esc(T.nearbyHelp(b.zone && zoneName(b.zone)))}</p>` : scope === 'home' ? `<p class="small muted" style="margin-bottom:8px">${esc(T.homeBoardNote)}</p>` : scope === 'punch' ? `<p class="small muted" style="margin-bottom:8px">${esc(T.punchBoardNote)}</p>` : '';
   const mineExtra = b.mine && !b.rows.some(r => r.me) ? `<p class="small muted" style="margin:8px 0">…</p>${row({ ...b.mine, me: true })}` : '';
   $('#bl').innerHTML = `<h2 class="d" style="font-size:26px;margin-bottom:6px">${esc(T.boardTitle)}</h2>${note}<div class="podium">${b.rows.map(row).join('') || `<p class="muted">${esc(T.emptyBoard)}</p>`}</div>${mineExtra}`;
 }
@@ -560,9 +560,9 @@ function renderRules() {
     <h3>Hype Moments</h3><p>Sometimes the crew drops a moment on everyone’s phone: chant, shake, freeze or a phone-light show. Fill the shared meter together and everyone who joined gets +${RULES.hypePoints}. Always in place — no running, no pushing.</p>
     <h3>The Scene</h3><p>Drop live info — food, water, toilets, medic, charging, shade, exits, crowded spots. +${RULES.reportPoints} per new pin (max ${RULES.reportCapPerHour}/hr), +${RULES.confirmPoints} when others confirm yours.</p>
     <div style="margin:18px 0 8px" class="stack"><button class="btn pink" id="rFb">💬 SPILL THE CHAI: BUG / IDEA / RANT</button><button class="btn ghost" id="rTour">👆 REPLAY THE HAND-HELD TOUR</button><button class="btn ghost" id="rIntro">🎧 LISTEN: 40-SEC HOW TO PLAY</button></div>
-    <div style="margin:8px 0 18px"><button class="btn ghost" id="rW">🔨 ${esc(T.homeTitle)}</button></div>`;
+    <div style="margin:8px 0 18px" class="stack"><button class="btn ghost" id="rW">🔨 ${esc(T.homeTitle)}</button><button class="btn ghost" id="rP">🥊 ${esc(T.punchTitle)}</button></div>`;
   $('#v-rules').insertAdjacentHTML('beforeend', `<p class="foot-credit">${esc(CONFIG.credit)} · v${esc(CONFIG.version)}</p>`);
-  $('#rW').onclick = startWhack;
+  $('#rW').onclick = startWhack; $('#rP').onclick = startPunch;
   $('#rFb').onclick = () => openFeedback({ screen: () => 'rules' }); $('#rTour').onclick = startTour; $('#rIntro').onclick = () => runTour(INTRO, { auto: true, doneLabel: 'BACK TO THE HUNT' });
 }
 
@@ -691,6 +691,49 @@ function runWhack() {
     refresh();
   };
   draw(); loop();
+}
+
+// ---------------------------------------------------------------- punch the bag (60s)
+function startPunch() {
+  if (!st) return;
+  go('hunt'); closeAll();
+  const intro = layer(`<div class="bagwrap"><div class="bagrope"></div><div class="bag"><img src="img/gyanu.svg" alt=""></div></div><h2 class="big" style="margin-top:6px">${esc(T.punchTitle)}</h2>
+    <p style="margin:12px 0 10px;font-weight:600">${esc(T.punchSub)}</p><p class="small" style="margin-bottom:14px">Your best: ${st.me.punchBest || 0}</p>
+    <div class="sw stack"><button class="btn pink" id="pGo">${esc(T.punchStart)}</button><button class="link" style="color:#fff" id="pX">nah</button></div>`);
+  intro.querySelector('#pX').onclick = () => intro.remove();
+  intro.querySelector('#pGo').onclick = () => { intro.remove(); runPunch(); };
+}
+function runPunch() {
+  const DUR = 60000; let n = 0, t0 = 0, over = false, tick = 0;
+  const o = layer(`<div class="punchhud"><span class="chip" id="pT">⏱ 60s</span><span class="chip" id="pN" style="margin-left:auto">🥊 0</span></div>
+    <div class="bagwrap big2"><div class="bagrope"></div><button class="bag" id="bag" aria-label="Punch the bag"><img src="img/gyanu.svg" alt="" draggable="false"></button></div>
+    <p class="small" id="pHint" style="margin-top:12px">TAP THE BAG. TIMER STARTS ON YOUR FIRST PUNCH.</p>`, 'punchov');
+  const bag = o.querySelector('#bag'), N = o.querySelector('#pN'), T0 = o.querySelector('#pT');
+  const words = ['POW', 'BAM', 'THWACK', 'BONK', 'WHAM', 'OOF'];
+  const hit = e => {
+    if (over) return; e.preventDefault();
+    if (!t0) { t0 = performance.now(); o.querySelector('#pHint').textContent = 'GO GO GO!'; tick = setInterval(upd, 100); setTimeout(finish, DUR); }
+    n++; N.textContent = '🥊 ' + n;
+    bag.classList.remove('swing'); void bag.offsetWidth; bag.classList.add('swing');
+    if (n % 3 === 0) play(n % 15 === 0 ? 'boom' : 'pop'); buzz(8);
+    const w = document.createElement('i'); w.className = 'pw'; w.textContent = words[n % words.length];
+    const r = bag.getBoundingClientRect(); w.style.left = (r.left + r.width / 2 + (Math.random() - .5) * 120) + 'px'; w.style.top = (r.top + r.height * .35 + (Math.random() - .5) * 60) + 'px';
+    o.appendChild(w); setTimeout(() => w.remove(), 450);
+  };
+  const upd = () => { const left = Math.max(0, Math.ceil((DUR - (performance.now() - t0)) / 1000)); T0.textContent = '⏱ ' + left + 's'; };
+  bag.addEventListener('pointerdown', hit);
+  const finish = async () => {
+    if (over) return; over = true; clearInterval(tick); o.remove();
+    let r = { ok: false, reason: '' }; try { r = await backend.punchScore(n); } catch (e) { r.reason = e.message; }
+    confetti(n > 200 ? 70 : 20); play(n > 120 ? 'tada' : 'bruh');
+    const d = layer(`<h2 class="big">${n} PUNCHES</h2><p class="d" style="font-size:20px;color:var(--pink);margin:10px 0">${esc(T.punchDone(n))}</p>
+      ${r.ok ? `<p>${r.best ? '🏆 NEW PERSONAL BEST' : 'Your best: ' + r.punchBest}</p>` : `<p>${esc(r.reason)}</p>`}
+      <div class="sw stack" style="margin-top:16px"><button class="btn pink" id="pA">AGAIN, OBVIOUSLY</button><button class="btn ghost" style="color:var(--ink)" id="pB">LEADERBOARD</button><button class="link" style="color:#fff" id="pC">back to the hunt</button></div>`);
+    d.querySelector('#pA').onclick = () => { d.remove(); runPunch(); };
+    d.querySelector('#pB').onclick = () => { d.remove(); scope = 'punch'; go('score'); };
+    d.querySelector('#pC').onclick = () => { d.remove(); refresh(); };
+    refresh();
+  };
 }
 
 // ---------------------------------------------------------------- boot

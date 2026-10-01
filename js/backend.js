@@ -70,7 +70,7 @@ function seed() {
   const fake = [['GYNUKILLER', 1240, 9, 'Soda lemon ginger pop, Gyanu bhai is a flop', 44], ['CHAIWALA', 1110, 8, 'Cutting chai, cutting Gyanu’s hiding streak', 31], ['TCHUTCHU', 980, 7, 'Go Gyanu go! (no seriously, go)', 52], ['VADAPAVKING', 720, 5, 'Unemployed? Yes. Undefeated? Also yes.', 18], ['LOCALTRAIN', 430, 3, 'Chronically online, briefly outside', 27]];
   for (const [nick, score, finds, slogan, home] of fake) {
     const id = uid('p_');
-    db.players.push({ id, nick, slogan, avatar: avatarFor(id), score, finds, streak: 0, bestStreak: 2, lastZone: ZONES[finds % ZONES.length].id, lastSubmitAt: 0, banned: false, createdAt: t, bot: true, notices: [], todayBase: score, homeBest: home, lastHomeAt: 0, lastSeen: 0, reports: [] });
+    db.players.push({ id, nick, slogan, avatar: avatarFor(id), score, finds, streak: 0, bestStreak: 2, lastZone: ZONES[finds % ZONES.length].id, lastSubmitAt: 0, banned: false, createdAt: t, bot: true, notices: [], todayBase: score, homeBest: home, punchBest: 150 + (home * 3) % 190, lastHomeAt: 0, lastPunchAt: 0, lastSeen: 0, reports: [] });
   }
   return db;
 }
@@ -106,7 +106,7 @@ export class LocalBackend {
     let nick = c.nick;
     while (db.players.some(p => p.nick === nick)) nick = c.nick.slice(0, 9) + '#' + (10 + Math.floor(Math.random() * 90));
     const id = uid('p_');
-    const p = { id, nick, slogan: s.slogan, avatar: avatarFor(id), score: 0, finds: 0, streak: 0, bestStreak: 0, lastZone: null, lastSubmitAt: 0, banned: false, createdAt: now(), notices: [], homeBest: 0, lastHomeAt: 0, lastSeen: now(), reports: [] };
+    const p = { id, nick, slogan: s.slogan, avatar: avatarFor(id), score: 0, finds: 0, streak: 0, bestStreak: 0, lastZone: null, lastSubmitAt: 0, banned: false, createdAt: now(), notices: [], homeBest: 0, punchBest: 0, lastHomeAt: 0, lastPunchAt: 0, lastSeen: now(), reports: [] };
     db.players.push(p); this.save(db);
     localStorage.setItem(ME, JSON.stringify({ id, token: uid('t_') }));
     return { id, nick, avatar: p.avatar, slogan: p.slogan };
@@ -160,7 +160,7 @@ export class LocalBackend {
       me: me && {
         id: me.id, nick: me.nick, slogan: me.slogan, avatar: me.avatar, score: me.score, finds: me.finds, streak: me.streak, bestStreak: me.bestStreak,
         banned: me.banned, rank: (board.findIndex(r => r.id === me.id) + 1) || null, players: board.length,
-        lastSubmitAt: me.lastSubmitAt, notices: me.notices || [], homeBest: me.homeBest || 0
+        lastSubmitAt: me.lastSubmitAt, notices: me.notices || [], homeBest: me.homeBest || 0, punchBest: me.punchBest || 0
       }
     };
   }
@@ -265,6 +265,18 @@ export class LocalBackend {
     this.save(db);
     return { ok: true, best, homeBest: me.homeBest };
   }
+  // ---------- punch the bag (60 seconds)
+  async punchScore(n) {
+    const db = this.load(); const me = this.me(db); if (!me) throw new Error('Join first');
+    n = Math.floor(Number(n) || 0);
+    if (n < 0 || n > RULES.punchMaxPerRound) return { ok: false, reason: 'That score looks sus. Real fists only.' };
+    if (now() - (me.lastPunchAt || 0) < RULES.punchCooldownSec * 1000) return { ok: false, reason: 'Too fast. Shake your hand out.' };
+    me.lastPunchAt = now();
+    const best = n > (me.punchBest || 0);
+    if (best) me.punchBest = n;
+    this.save(db);
+    return { ok: true, best, punchBest: me.punchBest };
+  }
 
   // ---------- the scene (crowd-sourced live info)
   liveScene(db) {
@@ -312,6 +324,8 @@ export class LocalBackend {
       rows = me?.lastZone ? live.filter(p => p.lastZone === me.lastZone) : [];
     } else if (scope === 'home') {
       rows = live.map(p => ({ ...p, score: p.homeBest || 0 }));
+    } else if (scope === 'punch') {
+      rows = live.map(p => ({ ...p, score: p.punchBest || 0 }));
     } else rows = live;
     return rows.filter(p => p.score > 0 || p.id === meId).sort((a, b) => b.score - a.score || a.createdAt - b.createdAt)
       .map((p, i) => ({ rank: i + 1, id: p.id, nick: p.nick, slogan: p.slogan || '', avatar: p.avatar, score: p.score, finds: p.finds }));
@@ -437,7 +451,7 @@ export class LocalBackend {
       case 'clearSlogan': { const p = P(a.id); if (p) p.slogan = ''; break; }
       case 'ban': { const p = P(a.id); if (p) p.banned = !!a.on; break; }
       case 'resetScores':
-        db.players.forEach(p => { p.score = 0; p.finds = 0; p.streak = 0; p.bestStreak = 0; p.lastZone = null; p.todayBase = 0; p.notices = []; p.homeBest = 0; });
+        db.players.forEach(p => { p.score = 0; p.finds = 0; p.streak = 0; p.bestStreak = 0; p.lastZone = null; p.todayBase = 0; p.notices = []; p.homeBest = 0; p.punchBest = 0; });
         db.subs.forEach(s => { s.status = 'void'; s.thumb = null; });
         db.gyanus.forEach(g => { g.finds = 0; g.claimedBy = null; });
         db.settings.ended = false; db.settings.winner = null; db.settings.hypeWins = 0;
@@ -517,6 +531,7 @@ export class SupabaseBackend {
   }
   async hype(level) { return this.rpc('gh_hype', { p_token: this.tok(), p_level: level }); }
   async homeScore(n) { return this.rpc('gh_home_score', { p_token: this.tok(), p_score: n }); }
+  async punchScore(n) { return this.rpc('gh_punch_score', { p_token: this.tok(), p_score: n }); }
   async scene() { return this.rpc('gh_scene', { p_token: this.tok() }); }
   async report(r) { return this.rpc('gh_report', { p_token: this.tok(), p_cat: r.cat, p_zone: r.zone, p_note: cleanNote(r.note) }); }
   async vote(id, kind) { return this.rpc('gh_vote', { p_token: this.tok(), p_id: id, p_kind: kind }); }

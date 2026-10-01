@@ -130,7 +130,7 @@ export const T = {
 
   nav: { hunt: 'HUNT', score: 'SCORE', rules: 'RULES', profile: 'PROFILE' },
   boardTitle: 'TOP HUNTERS',
-  scopes: { global: 'GLOBAL', today: 'TODAY', nearby: 'NEARBY', home: 'AT HOME' },
+  scopes: { global: 'GLOBAL', today: 'TODAY', nearby: 'NEARBY', home: 'AT HOME', punch: '🥊 PUNCH' },
   nearbyHelp: z => z ? `Hunters whose last find was at ${z}. Based on Gyanu zones only — we never use GPS.` : 'Find one Gyanu and we’ll show the hunters in your zone. No GPS, ever.',
   emptyBoard: 'Nobody’s scored yet. Be the first. Be legendary.',
 
@@ -148,6 +148,11 @@ export const T = {
   homeDone: n => n >= 40 ? 'Cracked. Touch grass after this.' : n >= 20 ? 'Okay you ate.' : n >= 8 ? 'Mid, but we move.' : 'Thumbs warming up, it’s fine.',
   homeBest: n => `Your best: ${n}`,
   homeRoach: 'NOT THE ROACH 😭',
+  punchTitle: 'PUNCH THE BAG',
+  punchSub: '60 seconds. Tap the bag as fast as your thumb can. Every punch counts. Highest total wins the board. Only the bag gets hurt, he’s fine.',
+  punchStart: 'GLOVES ON',
+  punchDone: n => n >= 400 ? 'Thumb of steel. Please hydrate.' : n >= 250 ? 'Okay, gym bro.' : n >= 120 ? 'Solid warm-up.' : 'Gentle. The bag felt a breeze.',
+  punchBoardNote: 'Most punches in 60 seconds. Same board for everyone, at the ground or at home.',
   homeBoardNote: 'At-home scores live on their own board, so the ground hunt stays fair.'
 };
 
