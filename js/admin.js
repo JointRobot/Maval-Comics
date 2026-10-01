@@ -8,7 +8,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const zn = id => ZONES.find(z => z.id === id)?.name || id;
 const ci = id => SCENE_CATS.find(c => c.id === id)?.icon || '?';
 const ago = t => { if (!t) return '—'; const s = Math.round((Date.now() - t) / 1000); return s < 60 ? `${s}s` : s < 3600 ? `${Math.round(s / 60)}m` : `${Math.round(s / 3600)}h`; };
-let pin = sessionStorage.getItem('gh_pin') || '', tab = 'live', S = null, editing = null, pendingRefs = [];
+let pin = sessionStorage.getItem('gh_pin') || '', tab = 'live', S = null, FB = [], fbKind = '', fbStatus = '', editing = null, pendingRefs = [];
 const toast = m => { const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 2000); };
 const act = async (a, p = {}, msg) => { try { await backend.admin(a, { pin, ...p }); if (msg) toast(msg); await load(); } catch (e) { toast('⚠️ ' + e.message); } };
 
@@ -29,7 +29,8 @@ $('#pauseBtn').onclick = () => {
 };
 
 async function load() {
-  try { S = await backend.admin('state', { pin }); } catch (e) { toast(e.message); return; }
+  try { S = await backend.admin('state', { pin }); FB = await backend.admin('feedback', { pin }).catch(() => FB); } catch (e) { toast(e.message); return; }
+  const fresh = FB.filter(f => f.status === 'new').length; $('[data-t=inbox]').textContent = `FEEDBACK${fresh ? ` (${fresh})` : ''}`;
   const pb = $('#pauseBtn'); pb.textContent = S.settings.paused ? '▶ RESUME HUNT' : '⏸ PAUSE'; pb.className = 'b ' + (S.settings.paused ? 'g' : 'r');
   const pending = S.subs.filter(s => s.status === 'pending').length;
   $('[data-t=subs]').textContent = `SUBMISSIONS${pending ? ` (${pending})` : ''}`;
@@ -43,7 +44,7 @@ setInterval(() => !document.hidden && $('#room').offsetParent && load(), 4000);
 function render() {
   if (!S) return;
   const b = $('#body');
-  const views = { live, create, subs, hype, crowd, players, board, settings };
+  const views = { live, create, subs, hype, crowd, players, board, inbox, settings };
   b.innerHTML = views[tab]();
   wire[tab]?.();
 }
@@ -66,7 +67,55 @@ function live() {
     ${S.settings.ended ? `<div class="card"><h2>HUNT COMPLETE${S.settings.winner ? ` — ${esc(S.settings.winner)} caught the Final Gyanu` : ''}</h2><button class="b sm" id="reopen">REOPEN HUNT</button></div>` : ''}
     <div class="grid">${g}</div>`;
 }
+// ---------- FEEDBACK: the suggestion / complaint box inbox
+const KIND_ICON = { bug: '🐛', annoying: '😤', idea: '💡', love: '❤️', other: '💬' };
+const MOOD = ['', '😡', '😕', '😐', '🙂', '🤩'];
+const STOP = new Set('the a an and or but is are was were be been to of in on at for with it its this that i me my we you your they them he she not no yes so do does did dont cant just very really also have has had get got can will would could should when where what how why there here then than too out up down about from as if by all any some more most one like too app game gyanu'.split(' '));
+const where = f => [f.ctx?.screen, [f.ctx?.os, f.ctx?.browser].filter(Boolean).join(' ')].filter(Boolean).join(' · ');
+function fbFiltered() { return FB.filter(f => (!fbKind || f.kind === fbKind) && (!fbStatus || f.status === fbStatus)); }
+function digest() {
+  const by = k => FB.filter(f => f.kind === k && f.status !== 'done');
+  const moods = FB.filter(f => f.mood); const avg = moods.length ? (moods.reduce((a, f) => a + f.mood, 0) / moods.length).toFixed(1) : '–';
+  const line = f => `- [${where(f) || 'no context'} · ${ago(f.createdAt)} ago${f.mood ? ' · mood ' + f.mood + '/5' : ''}] ${f.text || '(voice note only)'}`;
+  return `# Gyanu Hunt feedback digest — ${new Date().toLocaleDateString('en-IN')}\n${FB.length} notes · ${FB.filter(f => f.status === 'new').length} new · average mood ${avg}/5\n\n` +
+    [['bug', 'Bugs / broken'], ['annoying', 'Annoying'], ['idea', 'Ideas'], ['love', 'Love'], ['other', 'Other']].map(([k, h]) => by(k).length ? `## ${h} (${by(k).length})\n${by(k).map(line).join('\n')}\n` : '').join('\n') +
+    `\nPaste this to Claude: "Here is the feedback digest for Gyanu Hunt. Group it into themes, rank by how many people hit each one, and fix the top issues."`;
+}
+function inbox() {
+  const list = fbFiltered(), cnt = k => FB.filter(f => f.kind === k).length;
+  const words = {}; FB.forEach(f => (f.text || '').toLowerCase().replace(/[^a-z\u0900-\u097f' ]/g, ' ').split(/\s+/).filter(w => w.length > 3 && !STOP.has(w)).forEach(w => (words[w] = (words[w] || 0) + 1)));
+  const top = Object.entries(words).filter(([, n]) => n > 1).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  const screens = {}; FB.forEach(f => { const k = f.ctx?.screen || '?'; screens[k] = (screens[k] || 0) + 1; });
+  const items = list.map(f => `<div class="card" data-fb="${f.id}">
+      <div class="row"><span class="tag ${f.kind === 'bug' ? 'final' : f.kind === 'love' ? 'on' : f.kind === 'idea' ? 'golden' : ''}">${KIND_ICON[f.kind]} ${f.kind.toUpperCase()}</span>
+        ${f.mood ? `<span style="font-size:20px">${MOOD[f.mood]}</span>` : ''}<b>${esc(f.nick || 'anonymous')}</b><span class="mut">${ago(f.createdAt)} ago · ${esc(where(f))}</span>
+        <span class="tag" style="margin-left:auto">${f.status.toUpperCase()}</span></div>
+      <p style="margin:10px 0;font-weight:600;white-space:pre-wrap">${f.text ? esc(f.text) : '<span class="mut">(voice note only, no transcript)</span>'}</p>
+      <div class="row">${f.hasAudio ? `<button class="b t sm" data-play="${f.id}">▶ PLAY VOICE</button>` : ''}
+        ${f.status !== 'seen' ? `<button class="b k sm" data-mark="${f.id}:seen">MARK SEEN</button>` : ''}${f.status !== 'done' ? `<button class="b g sm" data-mark="${f.id}:done">✓ DONE</button>` : `<button class="b k sm" data-mark="${f.id}:new">REOPEN</button>`}
+        <button class="b k sm" data-fdel="${f.id}">🗑</button></div><div data-audio="${f.id}"></div></div>`).join('');
+  return `<div class="grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:12px">${Object.keys(KIND_ICON).map(k => `<div class="stat"><b>${cnt(k)}</b>${KIND_ICON[k]} ${k}</div>`).join('')}</div>
+    <div class="card"><div class="row">
+      <select id="fbK" style="width:auto"><option value="">all kinds</option>${Object.keys(KIND_ICON).map(k => `<option ${fbKind === k ? 'selected' : ''}>${k}</option>`).join('')}</select>
+      <select id="fbS" style="width:auto"><option value="">all statuses</option>${['new', 'seen', 'done'].map(k => `<option ${fbStatus === k ? 'selected' : ''}>${k}</option>`).join('')}</select>
+      <button class="b p sm" id="fbDigest">📋 COPY DIGEST FOR CLAUDE</button><button class="b k sm" id="fbJson">⬇ JSON</button></div>
+      ${FB.length ? `<p class="mut" style="margin-top:10px">Most-mentioned: ${top.length ? top.map(([w, n]) => `<b>${esc(w)}</b>×${n}`).join(' · ') : 'not enough repeats yet'} &nbsp;|&nbsp; By screen: ${Object.entries(screens).map(([k, n]) => `${esc(k)} ${n}`).join(' · ')}</p>` : ''}</div>
+    ${list.length ? items : '<div class="card"><p class="mut">Nothing here yet. When players tap 💬 in the game, their notes land in this inbox.</p></div>'}`;
+}
 const wire = {
+  inbox() {
+    $('#fbK').onchange = e => { fbKind = e.target.value; render(); }; $('#fbS').onchange = e => { fbStatus = e.target.value; render(); };
+    $('#fbDigest').onclick = async () => { const t = digest(); try { await navigator.clipboard.writeText(t); toast('Digest copied. Paste it to Claude.'); } catch { const w = open('', '_blank'); if (w) { w.document.write('<pre style="white-space:pre-wrap;font:14px monospace">' + esc(t) + '</pre>'); } else toast('Copy blocked. Use JSON download.'); } };
+    $('#fbJson').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(FB, null, 2)], { type: 'application/json' })); a.download = 'gyanu-feedback.json'; a.click(); };
+    document.querySelectorAll('[data-mark]').forEach(b => (b.onclick = () => { const [id, status] = b.dataset.mark.split(':'); act('feedbackMark', { id, status }); }));
+    document.querySelectorAll('[data-fdel]').forEach(b => (b.onclick = () => confirm('Delete this note for good?') && act('feedbackDelete', { id: b.dataset.fdel }, 'Deleted')));
+    document.querySelectorAll('[data-play]').forEach(b => (b.onclick = async () => {
+      const slot = document.querySelector(`[data-audio="${b.dataset.play}"]`); b.textContent = '…';
+      try { const r = await backend.admin('feedbackAudio', { pin, id: b.dataset.play }); if (!r?.audio) { b.textContent = 'voice expired'; return; }
+        slot.innerHTML = `<audio controls autoplay style="width:100%;margin-top:8px" src="data:${esc((r.mime || 'audio/webm').split(';')[0])};base64,${r.audio}"></audio>`; b.textContent = '▶ PLAY VOICE'; }
+      catch (e) { b.textContent = '⚠️ ' + e.message; }
+    }));
+  },
   live() {
     document.querySelectorAll('[data-on]').forEach(b => (b.onclick = () => { const x = S.gyanus.find(g => g.id === b.dataset.on); if (x.type !== 'classic' && !confirm(`Drop ${x.type.toUpperCase()} Gyanu now? Every phone gets an alert.`)) return; act('activate', { id: x.id, on: true }, 'Gyanu is live'); }));
     document.querySelectorAll('[data-off]').forEach(b => (b.onclick = () => act('activate', { id: b.dataset.off, on: false }, 'Deactivated')));

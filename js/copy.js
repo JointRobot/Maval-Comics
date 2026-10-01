@@ -135,6 +135,7 @@ export const TOUR = nick => [
   { target: '.top .pts', title: 'YOUR POINTS', text: 'Your score lives here. Streak flames show up next to it.', say: 'Your score lives here. Streak flames show up next to it.', sfx: 'cash' },
   { target: '#nav [data-v=scene]', title: 'THE SCENE', text: 'Live food, water, toilets, shade and charging, all shared by the crowd.', say: 'The scene tab. Live food, water, toilets, shade and charging, shared by the crowd.' },
   { target: '#nav [data-v=score]', title: 'LEADERBOARD', text: 'Global, today and nearby. Go on, climb it.', say: 'The leaderboard. Global, today, and nearby. Go on, climb it.' },
+  { target: '#fbBtn', title: 'SPILL THE CHAI', text: 'Something broken? Got an idea? Tap 💬 and just talk. Voice note or text, we read every one.', say: 'Something broken? Got an idea? Tap the chat bubble and just talk. Voice note or text, we read every one.', sfx: 'pop' },
   { target: '#nav [data-v=rules]', title: 'RULES + REPLAY', text: 'The rules live here, and you can replay this tour any time.', say: 'Rules live here, and you can replay this tour any time.' },
   { emoji: '🚶', title: 'PLAY SMART. DON’T RUN.', text: 'Respect people’s privacy. Stay in public, safe areas. Now go hunt!', say: 'Play smart. Don’t run. Respect people’s privacy. Stay in public, safe areas. Now go hunt!', sfx: 'horn' }
 ];
@@ -142,3 +143,16 @@ export const TOUR = nick => [
 const A = ['SODA', 'LEMON', 'GINGER', 'CHAI', 'VADA', 'POP', 'MASALA', 'CUTTING', 'SAMOSA', 'NIMBU', 'JALEBI', 'BHEL'];
 const B = ['POP', 'WALA', 'BRO', 'BEAST', 'GANG', 'GOAT', 'PRO', 'KING', 'CHAD', 'ZILLA', 'NINJA', 'FAN'];
 export const randomNick = () => (A[Math.floor(Math.random() * A.length)] + B[Math.floor(Math.random() * B.length)] + Math.floor(Math.random() * 90 + 10)).slice(0, 12);
+
+// Gyanu's "share what you know" nudges: Hindi first, a Hinglish twist underneath. Shown on the Scene tab,
+// after a find, and as an occasional bubble on the map.
+export const GSAYS = [
+  ['जानकारी साझा करो, सबकी मदद करो!', 'Info share karo, points bhi milenge.'],
+  ['खाना कहाँ मिल रहा है? बताओ, सबका पेट भरो 🍛', 'Short line wala stall? Pin kar do.'],
+  ['पानी का स्टॉल दिखा? Scene में डाल दो 💧', 'Pyaas sabko lagti hai.'],
+  ['टॉयलेट की लाइन छोटी है? शेयर करो 🚻', 'Duaayein milengi, guaranteed.'],
+  ['भीड़ ज़्यादा लगे तो बताओ, सब सुरक्षित रहें ⚠️', 'Ek pin, kai logon ki help.'],
+  ['चार्जिंग पॉइंट मिला? साझा करो 🔋', 'Battery low walon ke hero bano.'],
+  ['जो पता है, वो बताओ। यही असली हीरो वाला काम है', 'Gyanu bhi yahi kehta hai. Probably.']
+];
+export const gsay = () => GSAYS[Math.floor(Math.random() * GSAYS.length)];

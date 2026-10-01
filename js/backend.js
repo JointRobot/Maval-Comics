@@ -326,11 +326,25 @@ export class LocalBackend {
   async deleteMe() {
     const db = this.load(); const me = this.meId();
     db.subs = db.subs.filter(s => s.playerId !== me);
+    db.feedback = (db.feedback || []).filter(x => x.deviceMe !== me);
     db.scene = db.scene.filter(r => r.by !== me).map(r => ({ ...r, yes: r.yes.filter(x => x !== me), gone: r.gone.filter(x => x !== me) }));
     if (db.settings.hype?.contrib) delete db.settings.hype.contrib[me];
     db.players = db.players.filter(p => p.id !== me);
     this.save(db);
     localStorage.removeItem(ME);
+  }
+
+  // ---------------- suggestion box ----------------
+  async feedback(f) {
+    const db = this.load(); db.feedback = db.feedback || []; const me = this.me(db);
+    const text = String(f.text || '').replace(/[<>]/g, '').trim().slice(0, 1200);
+    if (!text && !f.audio) throw new Error('Say or type something first.');
+    const mine = db.feedback.filter(x => x.deviceMe === (me?.id || 'anon') && x.createdAt > now() - 3600e3).length;
+    if (mine >= 6) throw new Error('Easy, that’s plenty for now. Try again in a bit.');
+    db.feedback.unshift({ id: uid('f_'), kind: ['bug', 'annoying', 'idea', 'love'].includes(f.kind) ? f.kind : 'other', text, mood: f.mood > 0 && f.mood <= 5 ? f.mood : null,
+      ctx: f.ctx || {}, nick: me?.nick || null, deviceMe: me?.id || 'anon', audio: f.audio && f.audio.length < 240000 ? f.audio : null, mime: f.mime || null, status: 'new', createdAt: now() });
+    db.feedback = db.feedback.slice(0, 20); db.feedback.forEach((x, i) => { if (i >= 4) x.audio = null; }); // keep demo storage small
+    this.save(db); return { ok: true };
   }
 
   purgeOld(db) {
@@ -413,6 +427,10 @@ export class LocalBackend {
         db.gyanus.forEach(g => { g.finds = 0; g.claimedBy = null; });
         db.settings.ended = false; db.settings.winner = null; db.settings.hypeWins = 0;
         break;
+      case 'feedback': return (db.feedback || []).map(({ audio, deviceMe, ...r }) => ({ ...r, hasAudio: !!audio }));
+      case 'feedbackAudio': { const f = (db.feedback || []).find(x => x.id === a.id); return { audio: f?.audio || null, mime: f?.mime || null }; }
+      case 'feedbackMark': { const f = (db.feedback || []).find(x => x.id === a.id); if (f) f.status = a.status; break; }
+      case 'feedbackDelete': db.feedback = (db.feedback || []).filter(x => x.id !== a.id); break;
       case 'purgePhotos': db.subs.forEach(s => { if (s.status !== 'pending') s.thumb = null; }); break;
       case 'factoryReset': localStorage.removeItem(KEY); this.save(seed()); return true;
       default: throw new Error('Unknown action ' + action);
@@ -493,6 +511,7 @@ export class SupabaseBackend {
     return r;
   }
   async history() { return this.rpc('gh_history', { p_token: this.tok() }); }
+  async feedback(f) { return this.rpc('gh_feedback', { p_token: this.tok(), p_kind: f.kind, p_text: f.text, p_mood: f.mood || null, p_ctx: f.ctx || {}, p_audio: f.audio || null, p_mime: f.mime || null }); }
   async deleteMe() { await this.rpc('gh_delete_me', { p_token: this.tok() }); localStorage.removeItem(ME); }
   async admin(action, a = {}) {
     const { pin, ...rest } = a;

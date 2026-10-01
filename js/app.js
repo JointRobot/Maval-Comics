@@ -1,6 +1,6 @@
 // GYANU HUNT · the player app. Vanilla JS, no framework, one module graph.
 import { CONFIG, ZONES, SCENE_CATS } from './config.js';
-import { T, SLOGANS, RULES_COPY, INTRO, TOUR } from './copy.js';
+import { T, SLOGANS, RULES_COPY, INTRO, TOUR, gsay } from './copy.js';
 import { RULES, speedBonus } from './rules.js';
 import { backend, cleanNick, cleanSlogan } from './backend.js';
 import { analyse, verify } from './verify.js';
@@ -9,6 +9,7 @@ import { micMeter, motionMeter, tapMeter } from './sensors.js';
 import { shareCard } from './share.js';
 import { play, combo, unlock, setMuted, sfxState, stopSpeak } from './sfx.js';
 import { runTour, tourOpen } from './tour.js';
+import { openFeedback } from './feedback.js';
 
 // ---------------------------------------------------------------- helpers
 const $ = s => document.querySelector(s);
@@ -56,6 +57,7 @@ function fillStatic() {
   $('#joinTitle').textContent = T.joinTitle; $('#joinHelp').textContent = T.joinHelp;
   $('#sloganTitle').textContent = T.sloganTitle; $('#sloganHelp').textContent = T.sloganHelp; $('#sloganCustom').placeholder = T.sloganPh;
   $('#otpTitle').textContent = T.otpTitle; $('#otpHelp').textContent = T.otpHelp; $('#otpSend').textContent = T.otpSend;
+  $('#landCredit').innerHTML = `🪳 ${esc(CONFIG.credit)}`;
   $('#joinGo').textContent = T.joinGo; $('#ticker').textContent = T.safety;
   document.querySelectorAll('#nav button').forEach(b => (b.querySelector('span').textContent = T.nav[b.dataset.v] || 'SCENE'));
 }
@@ -275,8 +277,9 @@ async function submitPhoto(h, a) {
   refresh();
 }
 
+const gsaysHtml = () => { const [hi, en] = gsay(); return `<div class="gsays"><img src="img/gyanu.svg" alt=""><div><b lang="hi">${esc(hi)}</b><small>${esc(en)}</small></div></div>`; };
 function usefulChips(zone) {
-  return `<p style="margin-top:14px;font-weight:700">While you’re at ${esc(zoneName(zone))} — spot anything useful?</p>
+  return `${gsaysHtml()}<p style="margin-top:10px;font-weight:700">While you’re at ${esc(zoneName(zone))} — spot anything useful?</p>
     <div class="chips">${SCENE_CATS.filter(c => c.id !== 'exit').map(c => `<button class="chip" data-rep="${c.id}">${c.icon} ${esc(c.label)}</button>`).join('')}</div>`;
 }
 function wireUseful(o, zone) {
@@ -480,7 +483,7 @@ function renderScene(zonePick) {
   const v = $('#v-scene');
   if (!v.dataset.built) {
     v.dataset.built = 1;
-    v.innerHTML = `<div class="stats" id="scStats"></div>
+    v.innerHTML = `${gsaysHtml()}<div class="stats" id="scStats"></div>
       <div class="sceneMap"><canvas id="sceneCanvas"></canvas></div>
       <div class="row" style="margin-bottom:10px"><h2 class="d grow" style="font-size:24px">THE SCENE</h2><button class="btn" style="width:auto;min-height:44px;font-size:16px" id="dropBtn">+ DROP INFO</button></div>
       <p class="small muted" style="margin-bottom:8px">Live tips from hunters + the crew. Tap 👍 if it’s still true, ✋ if it’s gone. Pins fade after ${RULES.sceneTTLMin} min.</p>
@@ -550,10 +553,11 @@ function renderRules() {
     ${RULES_COPY.map(([h, p]) => `<h3>${esc(h)}</h3><p>${esc(p)}</p>`).join('')}
     <h3>Hype Moments</h3><p>Sometimes the crew drops a moment on everyone’s phone: chant, shake, freeze or a phone-light show. Fill the shared meter together and everyone who joined gets +${RULES.hypePoints}. Always in place — no running, no pushing.</p>
     <h3>The Scene</h3><p>Drop live info — food, water, toilets, medic, charging, shade, exits, crowded spots. +${RULES.reportPoints} per new pin (max ${RULES.reportCapPerHour}/hr), +${RULES.confirmPoints} when others confirm yours.</p>
-    <div style="margin:18px 0 8px" class="stack"><button class="btn pink" id="rTour">👆 REPLAY THE HAND-HELD TOUR</button><button class="btn ghost" id="rIntro">🎧 LISTEN: 40-SEC HOW TO PLAY</button></div>
+    <div style="margin:18px 0 8px" class="stack"><button class="btn pink" id="rFb">💬 SPILL THE CHAI: BUG / IDEA / RANT</button><button class="btn ghost" id="rTour">👆 REPLAY THE HAND-HELD TOUR</button><button class="btn ghost" id="rIntro">🎧 LISTEN: 40-SEC HOW TO PLAY</button></div>
     <div style="margin:8px 0 18px"><button class="btn ghost" id="rW">🔨 ${esc(T.homeTitle)}</button></div>`;
+  $('#v-rules').insertAdjacentHTML('beforeend', `<p class="foot-credit">${esc(CONFIG.credit)} · v${esc(CONFIG.version)}</p>`);
   $('#rW').onclick = startWhack;
-  $('#rTour').onclick = startTour; $('#rIntro').onclick = () => runTour(INTRO, { auto: true, doneLabel: 'BACK TO THE HUNT' });
+  $('#rFb').onclick = () => openFeedback({ screen: () => 'rules' }); $('#rTour').onclick = startTour; $('#rIntro').onclick = () => runTour(INTRO, { auto: true, doneLabel: 'BACK TO THE HUNT' });
 }
 
 async function renderProfile() {
@@ -651,7 +655,12 @@ function boot() {
   $('#playBtn').onclick = () => showJoin(false);
   $('#homeLink').onclick = () => showJoin(true);
   $('#introBtn').onclick = () => runTour(INTRO, { auto: true, doneLabel: 'LET’S PLAY' });
-  $('#helpBtn').onclick = startTour;
+  setInterval(() => { // Gyanu pops up now and then with a share-what-you-know nudge
+    if (document.hidden || $('#game').classList.contains('hide') || $('#layer').children.length || tourOpen() || whack || document.querySelector('.gtip')) return;
+    const [hi, en] = gsay(); const t = document.createElement('div'); t.className = 'gtip'; t.innerHTML = `<img src="img/gyanu.svg" alt=""><div><b lang="hi">${esc(hi)}</b><small>${esc(en)}</small></div>`;
+    t.onclick = () => { t.remove(); go('scene'); }; $('#app').appendChild(t); setTimeout(() => t.remove(), 7000);
+  }, 150000);
+  $('#fbBtn').onclick = () => openFeedback({ screen: () => view });
   $('#joinBack').onclick = () => { $('#join').classList.add('hide'); $('#landing').classList.remove('hide'); };
   $('#joinGo').onclick = doJoin; $('#otpSend').onclick = sendOtp;
   $('#nick').addEventListener('keydown', e => e.key === 'Enter' && doJoin());

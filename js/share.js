@@ -33,7 +33,8 @@ export async function makeCard({ nick, slogan, finds, score, rank, homeBest }) {
     x.fillStyle = '#15131A'; x.textAlign = 'center'; x.fillText(slogan, 0, 4, tw - 40); x.restore();
   }
   x.font = F(46); x.fillStyle = '#fff'; x.textAlign = 'center'; x.fillText(`— ${nick} —`, W / 2, 1255);
-  x.font = F(30); x.fillStyle = '#FFD400'; x.fillText('GYANU HUNT', W / 2, 1310);
+  x.font = F(30); x.fillStyle = '#FFD400'; x.fillText('GYANU HUNT', W / 2, 1300);
+  x.font = 'bold 24px system-ui, sans-serif'; x.fillStyle = 'rgba(255,255,255,.8)'; x.fillText(CONFIG.credit || '', W / 2, 1336);
   return new Promise(r => c.toBlob(r, 'image/png'));
 }
 
