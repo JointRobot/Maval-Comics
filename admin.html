@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Gyanu Control Room</title>
+<link rel="icon" href="img/gyanu.svg">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&display=swap">
+<style>
+:root{--ink:#15131A;--bg:#1C1824;--card:#262130;--line:#3A3346;--y:#FFD400;--p:#FF2E88;--t:#00A99D;--r:#E8262B;--o:#FF8A1F;--g:#3BB273;--mut:#A79FB4;--d:'Bungee',Impact,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:14px/1.4 system-ui,-apple-system,Roboto,sans-serif;background:var(--bg);color:#F2ECE2}
+button,input,select,textarea{font:inherit;color:inherit}
+h1{font:24px var(--d);color:var(--y)}h2{font:17px var(--d);color:var(--y);margin-bottom:10px}
+.wrap{max-width:1100px;margin:0 auto;padding:14px}
+.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;position:sticky;top:0;background:var(--bg);padding:10px 0;z-index:5;border-bottom:2px solid var(--line)}
+.bar img{width:38px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
+.tabs button,.b{font:13px var(--d);padding:9px 12px;border:2px solid var(--ink);border-radius:8px;background:var(--y);color:var(--ink);cursor:pointer;box-shadow:3px 3px 0 #000}
+.tabs button.on{background:var(--p);color:#fff}
+.b:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #000}
+.b.p{background:var(--p);color:#fff}.b.t{background:var(--t);color:#fff}.b.r{background:var(--r);color:#fff}.b.g{background:var(--g);color:#fff}.b.k{background:var(--card);color:#fff;border-color:var(--line)}.b.o{background:var(--o)}
+.b.sm{font-size:11px;padding:6px 8px}
+.card{background:var(--card);border:2px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+label{display:block;font-weight:700;font-size:12px;color:var(--mut);margin:8px 0 4px;text-transform:uppercase}
+input,select,textarea{width:100%;padding:9px 10px;border-radius:8px;border:2px solid var(--line);background:#14111A}
+.tag{font:11px var(--d);padding:3px 7px;border-radius:5px;background:var(--line)}
+.tag.classic{background:var(--p);color:#fff}.tag.golden{background:#FFC21A;color:var(--ink)}.tag.final{background:var(--r);color:#fff}.tag.on{background:var(--g);color:#fff}
+.mut{color:var(--mut)}.big{font:34px var(--d);color:var(--y)}
+.stat{background:#14111A;border-radius:8px;padding:10px;text-align:center}.stat b{display:block;font:24px var(--d);color:var(--y)}
+.sub{display:grid;grid-template-columns:110px 1fr;gap:10px;align-items:start;padding:10px 0;border-bottom:1px dashed var(--line)}
+.sub img{width:110px;height:110px;object-fit:cover;border-radius:8px;border:2px solid var(--line);background:#000}
+.paused{background:var(--r)!important;border-color:#fff!important}
+table{width:100%;border-collapse:collapse}td,th{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left}th{font:11px var(--d);color:var(--mut)}
+.zonebtns .b.on{outline:3px solid #fff}
+.refs img{width:54px;height:54px;object-fit:cover;border-radius:6px;margin-right:4px}
+.hide{display:none!important}
+#login{max-width:360px;margin:12vh auto;text-align:center}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--y);color:var(--ink);font-weight:800;padding:10px 16px;border-radius:8px;border:2px solid var(--ink);z-index:9}
+.meter{height:16px;background:#14111A;border-radius:6px;overflow:hidden;margin:8px 0}.meter i{display:block;height:100%;background:linear-gradient(90deg,var(--t),var(--y),var(--p))}
+</style>
+</head>
+<body>
+<div id="login" class="card">
+  <img src="img/gyanu.svg" width="90" alt=""><h1 style="margin:10px 0">GYANU CONTROL ROOM</h1>
+  <p class="mut" style="margin-bottom:12px">Crew only. Demo PIN is <b>2468</b> — change it in Settings.</p>
+  <input id="pin" type="password" inputmode="numeric" placeholder="PIN" autocomplete="off">
+  <button class="b p" style="width:100%;margin-top:10px" id="loginBtn">ENTER</button>
+  <p id="loginErr" style="color:var(--r);margin-top:8px;font-weight:700"></p>
+</div>
+<div class="wrap hide" id="room">
+  <div class="bar">
+    <img src="img/gyanu.svg" alt=""><h1>GYANU CONTROL ROOM</h1>
+    <span class="grow" style="flex:1"></span>
+    <button class="b r" id="pauseBtn">⏸ PAUSE</button>
+    <a class="b k" href="marker.html" target="_blank">🖨 MARKERS</a>
+    <a class="b k" href="./" target="_blank">↗ PLAYER APP</a>
+  </div>
+  <div class="tabs" id="tabs">
+    <button data-t="live" class="on">LIVE</button><button data-t="create">CREATE GYANU</button><button data-t="subs">SUBMISSIONS</button>
+    <button data-t="hype">HYPE</button><button data-t="crowd">CROWD + SCENE</button><button data-t="players">PLAYERS</button><button data-t="board">LEADERBOARD</button><button data-t="settings">SETTINGS</button>
+  </div>
+  <div id="body"></div>
+</div>
+<script type="module" src="js/admin.js"></script>
+</body>
+</html>

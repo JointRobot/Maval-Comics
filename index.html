@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Gyanu Hunt · Cockroach Edition</title>
+<meta name="description" content="Can you spot Gyanu? A live scavenger hunt for your phone.">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#15131A">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="img/gyanu.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="img/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&display=swap">
+<link rel="stylesheet" href="css/app.css">
+<link rel="modulepreload" href="js/app.js">
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- LANDING -->
+  <section class="landing" id="landing">
+    <div class="edition" id="edition">COCKROACH EDITION</div>
+    <h1 class="logo">GYANU<span>HUNT</span></h1>
+    <div class="hero"><img src="img/gyanu.svg" alt="Gyanu, peeking" width="230" height="238"><div class="bubble">psst… find me</div></div>
+    <p class="tagline">CAN YOU SPOT HIM?</p>
+    <p class="sub" id="landSub"></p>
+    <button class="btn pink" id="playBtn">PLAY NOW</button>
+    <button class="link" id="homeLink"></button>
+    <button class="link" id="introBtn">🎧 HOW TO PLAY · 40 SEC</button>
+    <p class="safety" id="landSafety"></p>
+  </section>
+
+  <!-- JOIN -->
+  <section class="screen hide" id="join">
+    <div class="stack">
+      <h2 id="joinTitle"></h2>
+      <p class="muted small" id="joinHelp"></p>
+      <input class="field" id="nick" maxlength="12" autocomplete="off" autocapitalize="characters" placeholder="e.g. CHAIWALA">
+      <h2 style="font-size:24px;margin-top:20px" id="sloganTitle"></h2>
+      <p class="muted small" id="sloganHelp"></p>
+      <div class="slogans" id="slogans"></div>
+      <input class="field hide" id="sloganCustom" maxlength="60">
+      <div id="otpBox" class="hide stack">
+        <h2 style="font-size:24px;margin-top:20px" id="otpTitle"></h2>
+        <p class="muted small" id="otpHelp"></p>
+        <div class="row"><input class="field grow" id="phone" type="tel" inputmode="tel" placeholder="+91 98XXXXXXXX"><button class="btn ghost" style="width:auto" id="otpSend"></button></div>
+        <input class="field hide" id="otpCode" inputmode="numeric" maxlength="6" placeholder="6-digit code">
+      </div>
+      <p class="err" id="joinErr"></p>
+      <button class="btn pink" id="joinGo"></button>
+      <button class="link" id="joinBack">← back</button>
+    </div>
+  </section>
+
+  <!-- GAME -->
+  <section class="hide" id="game" style="position:absolute;inset:0">
+    <header class="top">
+      <div class="mark">GYANU HUNT<small id="topEd">COCKROACH EDITION</small></div>
+      <div class="streak hide" id="topStreak"></div>
+      <button class="sndbtn" id="helpBtn" aria-label="Show me around" style="margin-left:auto;margin-right:-4px">?</button>
+      <button class="sndbtn" id="sndBtn" style="margin-left:0" aria-label="Sound on or off">🔊</button>
+      <div class="pts"><span id="topPts">0</span> <small>PTS</small></div>
+    </header>
+    <div class="ticker" id="ticker"></div>
+    <main class="views">
+      <div class="view mapview" id="v-hunt">
+        <canvas id="map" aria-label="Isometric map of the event ground"></canvas>
+        <div class="status" id="status"></div>
+        <div class="zoombtns"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">−</button></div>
+        <div class="sheet" id="sheet"></div>
+        <div class="whackbar hide" id="whackbar"></div>
+      </div>
+      <div class="view hide" id="v-scene"></div>
+      <div class="view hide board" id="v-score"></div>
+      <div class="view hide rules" id="v-rules"></div>
+      <div class="view hide" id="v-profile"></div>
+    </main>
+    <nav class="nav" id="nav">
+      <button data-v="hunt" class="on"><i>🎯</i><span></span></button>
+      <button data-v="scene"><i>📍</i><span></span></button>
+      <button data-v="score"><i>🏆</i><span></span></button>
+      <button data-v="rules"><i>📜</i><span></span></button>
+      <button data-v="profile"><i>🪳</i><span></span></button>
+    </nav>
+  </section>
+
+  <div id="layer"></div>
+</div>
+<noscript><p style="padding:20px;color:#fff">Gyanu Hunt needs JavaScript. Turn it on and Gyanu will appear.</p></noscript>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,144 @@
+// GYANU HUNT · every word the player sees. Gen Z, Mumbai Hinglish, self-roasting.
+// Edit freely — nothing else needs to change.
+
+export const SLOGANS = [
+  'Soda lemon ginger pop, Gyanu bhai is a flop',
+  'Go Gyanu go! (no seriously, go)',
+  'Ek do teen chaar, Gyanu ab toh haar',
+  'Unemployed? Yes. Undefeated? Also yes.',
+  'Chronically online, briefly outside',
+  'Lazy legend, Gyanu finder',
+  'Kaun Gyanu? Mil gaya Gyanu',
+  'Ek Gyanu, hazaar camera',
+  'Touching grass, catching Gyanu',
+  'Cutting chai, cutting Gyanu’s hiding streak',
+  'Hide & seek champion? Not on my watch',
+  'Gyanu, log out',
+  'It’s giving… found you',
+  'My screen time finally paid off'
+];
+
+export const T = {
+  tagline: 'Can you spot Gyanu?',
+  sub: 'He’s hiding. You’re chronically online. Use it.',
+  play: 'PLAY NOW',
+  safety: 'Play smart. Don’t run. Respect people’s privacy. Stay in public/safe areas.',
+  safetyShort: 'Walk, don’t sprint · respect people · stay in safe areas',
+
+  joinTitle: 'Pick your hunter name',
+  joinHelp: '3–12 letters or numbers. No real names needed — be iconic, not identifiable.',
+  sloganTitle: 'Pick your placard',
+  sloganHelp: 'Your slogan shows on the leaderboard + your share card. Or write your own.',
+  sloganCustom: 'Write my own',
+  sloganPh: 'max 60 characters, keep it fun',
+  joinGo: 'LET’S GOOO',
+  otpTitle: 'Quick verify',
+  otpHelp: 'We text a code once. Your number is never shown to anyone and never on the leaderboard.',
+  otpSend: 'SEND CODE', otpVerify: 'VERIFY',
+  otpDemo: c => `Demo mode — your code is ${c}`,
+
+  hiding: 'GYANU IS HIDING.',
+  hidingSub: 'Scope the map. Tap a ping. Go find him — at walking speed, bestie.',
+  noHunts: 'Gyanu is in his villain era (offline).',
+  noHuntsSub: 'Next appearance drops soon. Stay hydrated, stay put.',
+  scan: 'SCAN FOR GYANU',
+  takePhoto: 'TAKE PHOTO',
+  frameTip: 'Frame Gyanu, not people’s faces.',
+  foundAlready: 'Already caught this one. W.',
+  pending: 'With the judges',
+  tries: n => `${n} tr${n === 1 ? 'y' : 'ies'} left`,
+
+  camTitle: 'Camera time',
+  camWhy: 'We need your camera to snap Gyanu. The photo is shrunk on your phone and only a tiny copy is sent for checking — then auto-deleted. No gallery access. No location.',
+  camOk: 'OKAY, OPEN CAMERA', camNo: 'Not now',
+  camFail: 'Camera said no. Use the button below to snap one instead.',
+  camFallback: 'OPEN PHONE CAMERA',
+
+  checking: ['Checking the vibes…', 'Asking the council…', 'Zooming in like a detective…', 'Running the Gyanu-meter…'],
+  found: 'GYANU FOUND!',
+  foundSub: ['No cap, that’s him.', 'You ate that.', 'Main character behaviour.', 'Certified Gyanu spotter.'],
+  moved: 'Gyanu has moved.',
+  huntAgain: 'HUNT AGAIN',
+  sentJudges: 'SENT TO THE JUDGES',
+  sentSub: 'Lowkey blurry, so a human is checking. Points drop in a min.',
+  dupTitle: 'NAH, SEEN THAT ONE',
+  dupSub: 'Same pic as before. Screenshots don’t count, detective. Streak reset.',
+  coolTitle: 'EASY, SPEEDRUNNER',
+  blockTitle: 'HOLD UP',
+  rejected: 'The judges said that’s not Gyanu. Streak reset. Shake it off.',
+  approvedLate: p => `The judges approved your pic! +${p}`,
+
+  streak: n => n >= 5 ? `COCKROACH MODE ×${n} — unkillable` : `GYANU STREAK ×${n}`,
+  parts: { base: 'Find', speed: 'Speed', quality: 'Clean shot', combo: 'Combo' },
+
+  pausedTitle: 'HUNT PAUSED',
+  pausedDefault: 'Crowd’s getting thick. Stay where you are, chill, sip something. We’ll be back.',
+  goldenTitle: 'GOLDEN GYANU HAS APPEARED',
+  goldenSub: 'Rare drop. First verified pic gets +500. Walk, don’t sprint.',
+  finalTitle: 'FINAL GYANU HAS APPEARED',
+  finalSub: 'Boss fight. Winner takes +1,000. Calm legs, sharp eyes.',
+
+  endTitle: 'HUNT COMPLETE',
+  endWinner: n => `${n} caught the Final Gyanu`,
+  share: 'SHARE SCORE',
+
+  nav: { hunt: 'HUNT', score: 'SCORE', rules: 'RULES', profile: 'PROFILE' },
+  boardTitle: 'TOP HUNTERS',
+  scopes: { global: 'GLOBAL', today: 'TODAY', nearby: 'NEARBY', home: 'AT HOME' },
+  nearbyHelp: z => z ? `Hunters whose last find was at ${z}. Based on Gyanu zones only — we never use GPS.` : 'Find one Gyanu and we’ll show the hunters in your zone. No GPS, ever.',
+  emptyBoard: 'Nobody’s scored yet. Be the first. Be legendary.',
+
+  deleteBtn: 'DELETE MY DATA',
+  deleteConfirm: 'This wipes your hunter, score, slogan and photos. For real?',
+  deleted: 'Gone. Like it never happened.',
+  banned: 'Your account is on hold. Find the Gyanu crew in the orange tees.',
+
+  // Whack-a-Gyanu — the at-home mode
+  homeBtn: 'NOT AT THE EVENT? WHACK-A-GYANU',
+  homeTitle: 'WHACK-A-GYANU',
+  homeSub: '30 seconds. Gyanu pops up all over the ground. Bonk him. +1 each, golden +5. Don’t tap the cockroach — he’s one of us (−3).',
+  homeStart: 'START ROUND',
+  homeAgain: 'AGAIN, OBVIOUSLY',
+  homeDone: n => n >= 40 ? 'Cracked. Touch grass after this.' : n >= 20 ? 'Okay you ate.' : n >= 8 ? 'Mid, but we move.' : 'Thumbs warming up, it’s fine.',
+  homeBest: n => `Your best: ${n}`,
+  homeRoach: 'NOT THE ROACH 😭',
+  homeBoardNote: 'At-home scores live on their own board, so the ground hunt stays fair.'
+};
+
+export const RULES_COPY = [
+  ['How it works', 'Gyanu pops up somewhere at the event — a cut-out, a poster, a prop, or a crew member in the Gyanu cap. The map shows which zone he’s pinging in. Find him, snap him, score.'],
+  ['Points', 'First to catch a Gyanu: 100. Second: 50. After that: 10. Golden Gyanu: 500 to the first. Final Gyanu: 1,000 to the winner.'],
+  ['Speed bonus', 'Caught within 30s of him appearing: +100. Under 1 min: +75. Under 2: +50. Under 5: +25.'],
+  ['Clean shot', 'Gyanu clearly in frame: +25. Partly hidden but obviously him: +10.'],
+  ['Streaks', '2 in a row: +25 · 3: +50 · 4: +100 · 5+: +200 and you enter COCKROACH MODE. A fake, repeat or wrong pic resets it.'],
+  ['No spam', 'One catch per Gyanu. 3 tries max per appearance. 15 seconds between shots. Screenshots and repeat pics get caught.'],
+  ['Crowd rules (non-negotiable)', 'Walk, never run. No pushing, climbing or crossing roads. Stay out of barricaded or restricted areas. Never block gates or exits. Don’t follow or photograph strangers — Gyanu is always marked. If the crowd gets thick, we pause the game. Lazy is a lifestyle, use it.'],
+  ['Your data', 'We keep a nickname, a slogan, your score and a tiny copy of each photo (deleted within 24h). No phone number on the leaderboard, no GPS, no gallery access. Delete everything anytime from Profile.']
+];
+
+// Narrated intro (auto-plays, ~40s) and the hand-held tour. `say` is what the voice reads.
+export const INTRO = [
+  { emoji: '🪳', title: 'YO. GYANU IS HIDING.', text: 'He’s somewhere in the crowd. Find him, snap him, stack points.', say: 'Yo! Gyanu is hiding somewhere in the crowd. Find him, snap him, stack points.', sfx: 'horn' },
+  { emoji: '📍', title: 'FOLLOW THE PINK PINS', text: 'Pink pins on the map show where he’s hiding. Tap one and read the hint.', say: 'Pink pins on the map show where he is hiding. Tap one, read the hint, and walk there. Calmly.', sfx: 'pop' },
+  { emoji: '📸', title: 'SCAN. SNAP. DONE.', text: 'Hit SCAN FOR GYANU and click the Gyanu print. Only the print. Never people’s faces.', say: 'Hit scan for Gyanu and click a photo of the Gyanu print. Only the print. No strangers, no faces. Respect people’s privacy.', sfx: 'whoosh' },
+  { emoji: '⚡', title: 'FAST = MORE POINTS', text: 'Quicker finds pay more. Back-to-back finds build a streak combo.', say: 'Faster finds pay more. Back to back finds build a streak combo. Chase the combo.', sfx: 'cash' },
+  { emoji: '🎤', title: 'WHEN THE CROWD GETS LOUD', text: 'Sometimes everyone gets a prompt: chant, shake or freeze. Hit the target together and Gyanu pops out for all. Only loudness leaves your phone, never your voice.', say: 'Sometimes everyone gets a prompt. Chant, shake, or freeze together, and Gyanu pops out for the whole crowd. Only the loudness number leaves your phone. Never your voice.', sfx: 'dhol' },
+  { emoji: '🍛', title: 'THE SCENE TAB', text: 'Live food stalls, water, toilets, shade, charging. Spot something useful? Drop a pin.', say: 'The scene tab shows live food stalls, water, toilets, shade and charging, shared by everyone. Spot something useful? Drop a pin and earn points.', sfx: 'pop' },
+  { emoji: '🚶', title: 'PLAY SMART. DON’T RUN.', text: 'Respect people’s privacy. Stay in public, safe areas. It’s a game, not a stampede.', say: 'Play smart. Don’t run. Respect people’s privacy. Stay in public, safe areas. Ready? Let’s hunt.', sfx: 'whistle' }
+];
+
+export const TOUR = nick => [
+  { emoji: '🪳', title: `WELCOME, ${nick}`, text: 'Quick hand-held tour. Tap NEXT and I’ll point at everything.', say: `Welcome ${nick}. Quick tour. Tap next and I will point at everything.`, sfx: 'level' },
+  { target: '#map', title: 'THE GROUND', text: 'This is the whole venue. Drag to look around, pinch to zoom.', say: 'This is the whole venue. Drag to look around, pinch to zoom.' },
+  { target: '#sheet', title: 'GYANU’S HINT', text: 'Where he is, what he’s worth and a hint. Read it, then walk there. No running.', say: 'Here is where Gyanu is hiding, what he is worth, and a hint. Read it, then walk there. No running.' },
+  { target: '#scanBtn', title: 'SCAN FOR GYANU', text: 'This opens the camera. Frame the Gyanu print and shoot. Not people, not faces.', say: 'This button opens the camera. Frame the Gyanu print and shoot. Not people, not faces.', sfx: 'whoosh' },
+  { target: '.top .pts', title: 'YOUR POINTS', text: 'Your score lives here. Streak flames show up next to it.', say: 'Your score lives here. Streak flames show up next to it.', sfx: 'cash' },
+  { target: '#nav [data-v=scene]', title: 'THE SCENE', text: 'Live food, water, toilets, shade and charging, all shared by the crowd.', say: 'The scene tab. Live food, water, toilets, shade and charging, shared by the crowd.' },
+  { target: '#nav [data-v=score]', title: 'LEADERBOARD', text: 'Global, today and nearby. Go on, climb it.', say: 'The leaderboard. Global, today, and nearby. Go on, climb it.' },
+  { target: '#nav [data-v=rules]', title: 'RULES + REPLAY', text: 'The rules live here, and you can replay this tour any time.', say: 'Rules live here, and you can replay this tour any time.' },
+  { emoji: '🚶', title: 'PLAY SMART. DON’T RUN.', text: 'Respect people’s privacy. Stay in public, safe areas. Now go hunt!', say: 'Play smart. Don’t run. Respect people’s privacy. Stay in public, safe areas. Now go hunt!', sfx: 'horn' }
+];
+
+const A = ['SODA', 'LEMON', 'GINGER', 'CHAI', 'VADA', 'POP', 'MASALA', 'CUTTING', 'SAMOSA', 'NIMBU', 'JALEBI', 'BHEL'];
+const B = ['POP', 'WALA', 'BRO', 'BEAST', 'GANG', 'GOAT', 'PRO', 'KING', 'CHAD', 'ZILLA', 'NINJA', 'FAN'];
+export const randomNick = () => (A[Math.floor(Math.random() * A.length)] + B[Math.floor(Math.random() * B.length)] + Math.floor(Math.random() * 90 + 10)).slice(0, 12);
