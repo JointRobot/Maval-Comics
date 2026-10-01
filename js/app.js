@@ -53,7 +53,7 @@ function confetti(n = 60) {
 // ---------------------------------------------------------------- landing + join
 function fillStatic() {
   $('#edition').textContent = CONFIG.edition; $('#topEd').textContent = CONFIG.edition;
-  $('#landSub').textContent = T.sub; $('#playBtn').textContent = T.play; $('#homeLink').textContent = T.homeBtn; $('#landSafety').textContent = T.safety;
+  $('#landSub').textContent = T.sub; $('#playBtn').textContent = T.play; $('#homeLink').textContent = '🔨 WHACK-A-GYANU'; $('#landSafety').textContent = T.safety;
   $('#joinTitle').textContent = T.joinTitle; $('#joinHelp').textContent = T.joinHelp;
   $('#sloganTitle').textContent = T.sloganTitle; $('#sloganHelp').textContent = T.sloganHelp; $('#sloganCustom').placeholder = T.sloganPh;
   $('#otpTitle').textContent = T.otpTitle; $('#otpHelp').textContent = T.otpHelp; $('#otpSend').textContent = T.otpSend;
@@ -196,7 +196,7 @@ function renderSheet() {
   const open = openHunts();
   if (!open.length) {
     el.innerHTML = `<div class="panel"><h3>${esc(T.noHunts)}</h3><p class="muted" style="margin:6px 0 10px">${esc(T.noHuntsSub)}</p>
-      <div class="row"><button class="btn ghost" data-go="scene">📍 THE SCENE</button><button class="btn ghost" id="wBtn">🔨 WHACK</button></div></div>`;
+      <button class="btn teal" id="wBtn">🔨 WHACK-A-GYANU · PRACTICE</button><button class="btn ghost" data-go="scene" style="margin-top:8px">📍 THE SCENE</button></div>`;
     el.querySelector('[data-go]').onclick = () => go('scene'); $('#wBtn').onclick = startWhack;
     return;
   }
@@ -213,9 +213,10 @@ function renderSheet() {
     <p class="speed" id="speedLine">${speedLine(h)}</p>
     <p class="small muted" style="margin:2px 0 10px">${h.pending ? '⏳ ' + esc(T.pending) : esc(T.tries(triesLeft))} · ${esc(T.safetyShort)}</p>
     <button class="btn pink" id="scanBtn" ${h.pending || triesLeft <= 0 ? 'disabled' : ''}>📸 ${esc(T.scan)}</button>
+    <button class="btn teal" id="wBtn" style="margin-top:8px;min-height:46px;font-size:16px">🔨 WHACK-A-GYANU · PRACTICE</button>
   </div>`;
   el.querySelectorAll('[data-h]').forEach(b => (b.onclick = () => { selHunt = b.dataset.h; renderSheet(); }));
-  $('#scanBtn').onclick = () => scan(h);
+  $('#scanBtn').onclick = () => scan(h); $('#wBtn').onclick = startWhack;
   coolTick();
 }
 // After a shot, the button counts down the cooldown instead of letting people spam.
