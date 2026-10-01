@@ -8,17 +8,20 @@ const $ = s => document.querySelector(s);
 let live = null;
 export const tourOpen = () => !!live;
 
-export function runTour(steps, { auto = false, doneLabel = 'LET’S HUNT', onDone } = {}) {
+export function runTour(steps, { auto = false, autoChoice = false, doneLabel = 'LET’S HUNT', onDone } = {}) {
   live?.end(true);
   const app = $('#app'); let i = -1, dead = false, token = 0;
   const root = document.createElement('div'); root.className = 'tour';
   root.innerHTML = `<div class="tour-hole"></div><div class="tour-hand">👆</div>
     <div class="tour-card"><div class="tour-emoji"></div><h3></h3><p></p>
-      <div class="tour-dots"></div>
+      <div class="tour-dots"></div><button class="btn teal tour-auto" style="display:none;margin:0 0 10px;min-height:44px;font-size:15px">▶ AUTO-PLAY THE 40-SEC VERSION</button>
       <div class="tour-row"><button class="link tour-skip">skip</button><button class="tour-snd" aria-label="Toggle voice"></button><button class="btn pink tour-next">NEXT</button></div></div>`;
   app.appendChild(root);
   const hole = root.querySelector('.tour-hole'), hand = root.querySelector('.tour-hand'), card = root.querySelector('.tour-card');
-  const next = root.querySelector('.tour-next'), snd = root.querySelector('.tour-snd');
+  const next = root.querySelector('.tour-next'), snd = root.querySelector('.tour-snd'), autoBtn = root.querySelector('.tour-auto');
+  autoBtn.onclick = () => { auto = true; autoBtn.style.display = 'none'; say(steps[i]); };
+  // tap anywhere on a full-screen card to move on (buttons keep their own jobs)
+  root.addEventListener('click', e => { if (root.classList.contains('full') && !e.target.closest('button')) advance(); });
   const paintSnd = () => { snd.textContent = sfxState.voice && !sfxState.muted ? '🔊' : '🔇'; snd.style.display = canSpeak() ? '' : 'none'; };
   paintSnd();
   snd.onclick = () => { setVoice(!sfxState.voice); paintSnd(); if (sfxState.voice) say(steps[i]); };
@@ -41,7 +44,8 @@ export function runTour(steps, { auto = false, doneLabel = 'LET’S HUNT', onDon
     card.querySelector('.tour-emoji').textContent = s.emoji || '';
     card.querySelector('h3').textContent = s.title || '';
     card.querySelector('p').textContent = s.text;
-    next.textContent = n === steps.length - 1 ? doneLabel : 'NEXT';
+    next.textContent = n === steps.length - 1 ? doneLabel : (n === 0 && autoChoice ? 'TAP TO START' : 'NEXT');
+    autoBtn.style.display = n === 0 && autoChoice && !auto ? '' : 'none';
     card.classList.remove('pop'); void card.offsetWidth; card.classList.add('pop');
     place(s);
     say(s);

@@ -563,7 +563,7 @@ function renderRules() {
     <div style="margin:8px 0 18px" class="stack"><button class="btn ghost" id="rW">🔨 ${esc(T.homeTitle)}</button><button class="btn ghost" id="rP">🥊 ${esc(T.punchTitle)}</button></div>`;
   $('#v-rules').insertAdjacentHTML('beforeend', `<p class="foot-credit">${esc(CONFIG.credit)} · v${esc(CONFIG.version)}</p>`);
   $('#rW').onclick = startWhack; $('#rP').onclick = startPunch;
-  $('#rFb').onclick = () => openFeedback({ screen: () => 'rules' }); $('#rTour').onclick = startTour; $('#rIntro').onclick = () => runTour(INTRO, { auto: true, doneLabel: 'BACK TO THE HUNT' });
+  $('#rFb').onclick = () => openFeedback({ screen: () => 'rules' }); $('#rTour').onclick = startTour; $('#rIntro').onclick = () => runTour(INTRO, { autoChoice: true, doneLabel: 'BACK TO THE HUNT' });
 }
 
 async function renderProfile() {
@@ -743,7 +743,7 @@ function boot() {
   $('#homeLink').onclick = () => showJoin(true);
   $('#status').addEventListener('click', e => { if (e.target.closest('[data-crowd]')) openCrowd(); });
   if (!backend.meId()) landingCrowd();
-  $('#introBtn').onclick = () => runTour(INTRO, { auto: true, doneLabel: 'LET’S PLAY' });
+  $('#introBtn').onclick = () => runTour(INTRO, { autoChoice: true, doneLabel: 'LET’S PLAY' });
   setInterval(() => { // Gyanu pops up now and then with a share-what-you-know nudge
     if (document.hidden || $('#game').classList.contains('hide') || $('#layer').children.length || tourOpen() || whack || document.querySelector('.gtip')) return;
     const [hi, en] = gsay(); const t = document.createElement('div'); t.className = 'gtip'; t.innerHTML = `<img src="img/gyanu.svg" alt=""><div><b lang="hi">${esc(hi)}</b><small>${esc(en)}</small></div>`;
