@@ -432,24 +432,26 @@ function openCatch(r0) {
   const o = layer(`<img class="mascot" src="img/gyanu.svg" alt=""><h2 class="big" style="font-size:34px;margin-top:6px">${esc(ROAM.catchTitle)}</h2>
     <p style="margin:6px 0 8px;font-weight:700">${esc(need ? ROAM.catchCode(zoneName(r.zone)) : ROAM.catchSub)}</p>
     ${need ? `<input class="field" id="rcode" maxlength="8" placeholder="zone code" autocapitalize="characters" style="max-width:200px;text-align:center;margin-bottom:8px">` : ''}
-    <div class="tbar" id="tbar"><div class="tzone" id="tz"></div><div class="tmark" id="tm">🪳</div></div>
+    <div class="tbar" id="tbar"><div class="tzone" id="tz"></div><div class="tmark" id="tm"><img src="img/gyanu.svg" alt=""></div><div class="slap" id="slap">🖐️</div></div>
     <p class="small" id="tmsg" style="margin:8px 0 10px;min-height:20px">${esc(ROAM.catchHint)}</p>
     <div class="sw stack"><button class="btn pink" id="throw">🎯 THROW!</button><button class="link" style="color:#fff" id="rx">leave him</button></div>`);
   const bar = o.querySelector('#tbar'), tm = o.querySelector('#tm'), tz = o.querySelector('#tz'), msg = o.querySelector('#tmsg');
   const setZone = () => { zw = Math.max(0.16, 0.3 - (speed - 1.5) * 0.04); zc = 0.25 + Math.random() * 0.5; tz.style.left = (zc - zw / 2) * 100 + '%'; tz.style.width = zw * 100 + '%'; };
   setZone(); let pos = 0, t0 = performance.now();
-  const loop = t => { pos = (1 + Math.sin((t - t0) / 1000 * speed * 2.2)) / 2; tm.style.left = `calc(${pos * 100}% - 18px)`; raf = requestAnimationFrame(loop); };
+  const loop = t => { pos = (1 + Math.sin((t - t0) / 1000 * speed * 2.2)) / 2; tm.style.left = `calc(${pos * 100}% - 20px)`; raf = requestAnimationFrame(loop); };
   raf = requestAnimationFrame(loop);
+  const slap = o.querySelector('#slap');
+  const slapAt = (p, hit) => { slap.style.left = `calc(${p * 100}% - 20px)`; slap.classList.remove('go', 'miss'); void slap.offsetWidth; slap.classList.add('go'); if (hit) { tm.classList.remove('hit'); void tm.offsetWidth; tm.classList.add('hit'); } };
   const close = () => { cancelAnimationFrame(raf); o.remove(); };
   o.querySelector('#rx').onclick = close;
   o.querySelector('#throw').onclick = async () => {
     if (busy) return;
     code = (o.querySelector('#rcode')?.value || '').trim();
     if (need && !code) { msg.textContent = ROAM.needCodeMsg; return; }
-    if (Math.abs(pos - zc) > zw / 2) { buzz(40); play('bruh'); speed = Math.min(3.2, speed + 0.25); setZone(); msg.textContent = pick(ROAM.miss); bar.classList.remove('shake'); void bar.offsetWidth; bar.classList.add('shake'); return; }
-    busy = true; cancelAnimationFrame(raf); msg.textContent = 'Landed! Checking…';
+    if (Math.abs(pos - zc) > zw / 2) { slapAt(pos, false); buzz(40); play('bruh'); speed = Math.min(3.2, speed + 0.25); setZone(); msg.textContent = pick(ROAM.miss); bar.classList.remove('shake'); void bar.offsetWidth; bar.classList.add('shake'); return; }
+    busy = true; cancelAnimationFrame(raf); slapAt(pos, true); play('pop'); msg.textContent = 'SLAP! Checking…';
     try {
-      const res = await backend.catchRoam(r.id, code);
+      const [res] = await Promise.all([backend.catchRoam(r.id, code), new Promise(k => setTimeout(k, 600))]);
       if (!res.ok) { busy = false; if (res.gone) { close(); toast('🪳 ' + res.reason, 4000); refresh(); return; } msg.textContent = res.reason || 'Nope. Try again.'; raf = requestAnimationFrame(t => { t0 = t - pos * 1000; loop(t); }); return; }
       close(); confetti(70); buzz([60, 40, 120]); combo('cash', 'level');
       const w = layer(`<img class="mascot" src="img/gyanu.svg" alt=""><h2 class="big" style="margin-top:8px">${esc(ROAM.winTitle(res.order))}</h2>
