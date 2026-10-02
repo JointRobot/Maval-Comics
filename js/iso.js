@@ -536,7 +536,8 @@ export class IsoMap {
       const sz = Math.max(30, S * 5.4) * (h.roam ? 0.88 : 1) * (this.selected === h.id ? 1.18 : 1);
       ctx.fillStyle = h.found ? '#3BB273' : col; ctx.strokeStyle = INK; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.arc(mx, my, sz * 0.62, 0, 7); ctx.fill(); ctx.stroke();
-      if (this.gyanuImg.complete && this.gyanuImg.naturalWidth) ctx.drawImage(this.gyanuImg, mx - sz / 2, my - sz * 0.55, sz, sz * 1.03);
+      if (!h.roam && h.type === 'classic') drawRoach(ctx, mx, my, sz * 0.95); // fixed spots are just location markers: a cockroach, not Gyanu himself
+      else if (this.gyanuImg.complete && this.gyanuImg.naturalWidth) ctx.drawImage(this.gyanuImg, mx - sz / 2, my - sz * 0.55, sz, sz * 1.03);
       if (h.roam) { // slots-left badge + time-left ring so people can race each other
         const bx = mx + sz * 0.5, by = my - sz * 0.5, br = Math.max(10, sz * 0.26);
         ctx.fillStyle = INK; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(bx, by, br, 0, 7); ctx.fill(); ctx.stroke();
