@@ -52,8 +52,10 @@ export function runTour(steps, { auto = false, autoChoice = false, doneLabel = '
   }
 
   function place(s) {
-    const a = app.getBoundingClientRect(), el = s.target && $(s.target);
-    const r = el && el.offsetParent !== null ? el.getBoundingClientRect() : null;
+    const a = app.getBoundingClientRect();
+    let r = null;
+    if (typeof s.target === 'function') r = s.target();
+    else { const el = s.target && $(s.target); r = el && el.offsetParent !== null ? el.getBoundingClientRect() : null; }
     if (!r || r.height < 8) { // card step: whole screen dimmed, card in the middle
       root.classList.add('full'); root.classList.remove('spot');
       hole.style.cssText = ''; hand.style.display = 'none'; card.style.top = card.style.bottom = ''; return;

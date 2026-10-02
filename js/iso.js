@@ -282,14 +282,15 @@ export class IsoMap {
     this.W = r.width; this.H = r.height;
     this.cv.width = Math.round(r.width * this.dpr); this.cv.height = Math.round(r.height * this.dpr);
     this.padB = this.opts.padBottom?.() || 0;      // room the bottom sheet covers
-    const h = Math.max(160, this.H - this.padB);
+    this.padT = this.opts.padTop?.() || 0;         // room the status chips cover
+    const h = Math.max(160, this.H - this.padB - this.padT);
     this.S0 = Math.min(this.W * 0.97 / ((MAP.w + MAP.h) * C), h * 0.92 / (MAP.h + 12));
     this.rebuild();
   }
   get S() { return this.S0 * this.k; }
   origin() { // screen position of plan (0,0,0) for the current view centre
     const S = this.S;
-    return [this.W / 2 - (this.cx - this.cy) * C * S, (this.H - this.padB) / 2 + 4 * S - (this.cx + this.cy) * 0.5 * S];
+    return [this.W / 2 - (this.cx - this.cy) * C * S, (this.H - this.padB + this.padT) / 2 + 4 * S - (this.cx + this.cy) * 0.5 * S];
   }
   P(x, y, z = 0) { const [ox, oy] = this.origin(), S = this.S; return [ox + (x - y) * C * S, oy + (x + y) * 0.5 * S - z * S]; }
   toPlan(sx, sy) { const [ox, oy] = this.origin(), S = this.S; const a = (sx - ox) / (C * S), b = (sy - oy) / (0.5 * S); return [(a + b) / 2, (b - a) / 2]; }
@@ -526,6 +527,16 @@ export class IsoMap {
       ctx.beginPath(); ctx.arc(mx, my, sz * 0.62, 0, 7); ctx.fill(); ctx.stroke();
       if (this.gyanuImg.complete && this.gyanuImg.naturalWidth) ctx.drawImage(this.gyanuImg, mx - sz / 2, my - sz * 0.55, sz, sz * 1.03);
       if (h.found) { ctx.fillStyle = '#fff'; ctx.font = `${sz * 0.42}px Bungee, Impact, sans-serif`; ctx.textAlign = 'center'; ctx.fillText('✓', mx + sz * 0.45, my - sz * 0.35); }
+      if (this.selected === h.id && !h.found) { // the pin to go for: pulsing white halo + a name tag, so it can't be missed
+        const k2 = (Math.sin(t * 5) + 1) / 2;
+        ctx.beginPath(); ctx.arc(mx, my, sz * (0.72 + 0.12 * k2), 0, 7); ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; ctx.stroke();
+        ctx.beginPath(); ctx.arc(mx, my, sz * (0.84 + 0.2 * k2), 0, 7); ctx.strokeStyle = col; ctx.globalAlpha = 0.55 - 0.3 * k2; ctx.lineWidth = 5; ctx.stroke(); ctx.globalAlpha = 1;
+        const zn = (ZONES.find(q => q.id === h.zone)?.short || '').toUpperCase(), fs = Math.max(11, Math.min(14, sz * 0.3));
+        ctx.font = `${fs}px Bungee, Impact, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        const lab = `📍 ${zn}`, tw = ctx.measureText(lab).width + 16, ty = my + sz * 0.95 + 6 + Math.sin(t * 5) * 2;
+        ctx.fillStyle = INK; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(mx - tw / 2, ty - fs * 0.9, tw, fs * 1.8, 8); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#FFD400'; ctx.fillText(lab, mx, ty + 1); ctx.textBaseline = 'alphabetic';
+      }
       this.huntHits.push({ id: h.id, x: mx, y: my, r: sz * 0.75 });
     }
   }
@@ -596,7 +607,8 @@ export class IsoMap {
     const z = ZONES.find(z => x >= z.x && x <= z.x + z.w && y >= z.y && y <= z.y + z.h);
     if (z) this.opts.onZone?.(z.id);
   }
-  refit() { const p = this.opts.padBottom?.() || 0; if (Math.abs(p - (this.padB || 0)) > 40) this.resize(); } // skip tiny sheet changes: a rebuild costs ~30 ms on budget phones
+  refit() { const p = this.opts.padBottom?.() || 0, q = this.opts.padTop?.() || 0; if (Math.abs(p - (this.padB || 0)) > 40 || Math.abs(q - (this.padT || 0)) > 30) this.resize(); }
+  pinRect(id) { const h = (this.huntHits || []).find(q => q.id === id); if (!h) return null; const b = this.cv.getBoundingClientRect(); return { left: b.left + h.x - h.r, top: b.top + h.y - h.r, width: h.r * 2, height: h.r * 2.1, bottom: b.top + h.y + h.r * 1.1, right: b.left + h.x + h.r }; } // skip tiny sheet changes: a rebuild costs ~30 ms on budget phones
   zoomBy(f) { this.k = Math.max(1, Math.min(3.2, this.k * f)); this.rebuild(); }
 }
 

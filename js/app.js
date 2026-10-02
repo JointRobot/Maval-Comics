@@ -66,7 +66,7 @@ function fillStatic() {
   document.querySelectorAll('#nav button').forEach(b => (b.querySelector('span').textContent = T.nav[b.dataset.v] || 'SCENE'));
 }
 
-let wantHome = false, otpOk = CONFIG.otp === 'off', demoCode = null;
+let wantTour = false, wantHome = false, otpOk = CONFIG.otp === 'off', demoCode = null;
 let sloganLang = defaultSloganLang(), chosenSlogan = SLOGAN_SETS[sloganLang][0];
 const langTabsHtml = (cur, attr = 'data-l') => SLOGAN_LANGS.map(([id, label]) => `<button class="chip${cur === id ? ' on' : ''}" ${attr}="${id}">${esc(label)}</button>`).join('');
 function renderJoinSlogans() {
@@ -112,14 +112,30 @@ async function doJoin() {
     }
     await backend.register(n.nick, sl.slogan);
     play('level'); await enterGame();
-    if (wantHome) startWhack();
+    if (wantHome) startWhack(); else firstRun();
   } catch (e) { $('#joinErr').textContent = e.message; }
   $('#joinGo').disabled = false;
 }
 
 const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
-function startTour() { go('hunt'); runTour(TOUR(st?.me?.nick || 'HUNTER'), { onDone: () => { go('hunt'); } }); }
+function startTour(first) {
+  go('hunt');
+  const steps = TOUR(st?.me?.nick || 'HUNTER', { pin: () => (selHunt && map?.pinRect(selHunt)) || null });
+  runTour(steps, { auto: !!first, onDone: () => { lsSet('gh_toured', '1'); go('hunt'); if (!lsGet('gh_scanned')) coach(); } });
+}
+// Brand-new players get walked through automatically (voice + big text); it's skippable and never repeats.
+function firstRun() { if (lsGet('gh_toured') && !wantTour) return; wantTour = false; setTimeout(() => startTour(true), 650); }
+// After the tour: a bouncing instruction bar that keeps telling them the next move until their first scan.
+function coach() {
+  document.querySelector('.coach')?.remove();
+  const lines = ['👆 Tap the pulsing pin on the map', '🚶 Walk to the spot. Calmly!', '📸 Hit SCAN FOR GYANU and snap the print', '🔨 Waiting? Whack a Gyanu or throw a punch'];
+  let n = 0; const el = document.createElement('div'); el.className = 'coach'; el.textContent = lines[0];
+  $('#v-hunt').appendChild(el);
+  const place = () => { el.style.bottom = (($('#sheet').offsetHeight || 0) + 18) + 'px'; }; place();
+  const t = setInterval(() => { if (lsGet('gh_scanned') || !el.isConnected) { clearInterval(t); el.remove(); return; } n = (n + 1) % lines.length; place(); el.textContent = lines[n]; el.classList.remove('in'); void el.offsetWidth; el.classList.add('in'); }, 5000);
+  el.onclick = () => { clearInterval(t); el.remove(); };
+}
 
 // ---------------------------------------------------------------- game shell
 async function enterGame() {
@@ -129,9 +145,10 @@ async function enterGame() {
       onHunt: id => { selHunt = id; renderSheet(); },
       onZone: (z, kind) => { if (kind === 'scene') { go('scene'); sceneFilter = null; renderScene(z); } else { const h = st?.hunts.find(h => h.zone === z && !h.found); if (h) { selHunt = h.id; renderSheet(); } else toast(`${zoneName(z)} — no Gyanu pinging here rn.`); } },
       onPop: p => { if (whack) { play(p.kind === 'roach' ? 'bruh' : p.kind === 'gold' ? 'cash' : 'pop'); whack.hit(p); } },
-      padBottom: () => ($('#sheet').offsetHeight || 0) + 10
+      padBottom: () => ($('#sheet').offsetHeight || 0) + 10,
+      padTop: () => { const st2 = $('#status'); return st2 ? st2.offsetHeight + 8 : 0; }
     });
-    new ResizeObserver(() => map.refit()).observe($('#sheet'));
+    new ResizeObserver(() => map.refit()).observe($('#sheet')); new ResizeObserver(() => map.refit()).observe($('#status'));
     $('#zin').onclick = () => map.zoomBy(1.4); $('#zout').onclick = () => map.zoomBy(1 / 1.4);
   }
   map.start(); window.gyanuMap = map; // handy for testing from the console
@@ -276,6 +293,7 @@ function openCamera(h) {
 }
 
 async function submitPhoto(h, a) {
+  lsSet('gh_scanned', '1'); document.querySelector('.coach')?.remove();
   const o = layer(`<div class="spinner"></div><h2 class="big" style="font-size:34px">${esc(pick(T.checking))}</h2>`);
   const t0 = performance.now();
   let res;
@@ -820,6 +838,7 @@ function boot() {
   $('#status').addEventListener('click', e => { if (e.target.closest('[data-crowd]')) openCrowd(); else if (e.target.closest('[data-call]')) openCall(); });
   landingCrowd();
   $('#introBtn').onclick = () => runTour(INTRO, { autoChoice: true, doneLabel: 'LET’S PLAY' });
+  $('#tourBtn').onclick = async () => { wantTour = true; if (back) { await enterGame(); firstRun(); } else showJoin(false); };
   setInterval(() => { // Gyanu pops up now and then with a share-what-you-know nudge
     if (document.hidden || $('#game').classList.contains('hide') || $('#layer').children.length || tourOpen() || whack || document.querySelector('.gtip')) return;
     const [hi, en] = gsay(); const t = document.createElement('div'); t.className = 'gtip'; t.innerHTML = `<img src="img/gyanu.svg" alt=""><div><b lang="hi">${esc(hi)}</b><small>${esc(en)}</small></div>`;

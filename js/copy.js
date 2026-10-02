@@ -178,17 +178,16 @@ export const INTRO = [
   { emoji: '🚶', title: 'PLAY SMART. DON’T RUN.', text: 'Respect people’s privacy. Stay in public, safe areas. It’s a game, not a stampede.', say: 'Play smart. Don’t run. Respect people’s privacy. Stay in public, safe areas. Ready? Let’s hunt.', sfx: 'whistle' }
 ];
 
-export const TOUR = nick => [
-  { emoji: '🪳', title: `WELCOME, ${nick}`, text: 'Quick hand-held tour. Tap NEXT and I’ll point at everything.', say: `Welcome ${nick}. Quick tour. Tap next and I will point at everything.`, sfx: 'level' },
-  { target: '#map', title: 'THE GROUND', text: 'This is the whole venue. Drag to look around, pinch to zoom.', say: 'This is the whole venue. Drag to look around, pinch to zoom.' },
-  { target: '#sheet', title: 'GYANU’S HINT', text: 'Where he is, what he’s worth and a hint. Read it, then walk there. No running.', say: 'Here is where Gyanu is hiding, what he is worth, and a hint. Read it, then walk there. No running.' },
-  { target: '#scanBtn', title: 'SCAN FOR GYANU', text: 'This opens the camera. Frame the Gyanu print and shoot. Not people, not faces.', say: 'This button opens the camera. Frame the Gyanu print and shoot. Not people, not faces.', sfx: 'whoosh' },
-  { target: '.top .pts', title: 'YOUR POINTS', text: 'Your score lives here. Streak flames show up next to it.', say: 'Your score lives here. Streak flames show up next to it.', sfx: 'cash' },
-  { target: '#nav [data-v=scene]', title: 'THE SCENE', text: 'Live food, water, toilets, shade and charging, all shared by the crowd.', say: 'The scene tab. Live food, water, toilets, shade and charging, shared by the crowd.' },
-  { target: '#nav [data-v=score]', title: 'LEADERBOARD', text: 'Global, today and nearby. Go on, climb it.', say: 'The leaderboard. Global, today, and nearby. Go on, climb it.' },
-  { target: '#fbBtn', title: 'SPILL THE CHAI', text: 'Something broken? Got an idea? Tap 💬 and just talk. Voice note or text, we read every one.', say: 'Something broken? Got an idea? Tap the chat bubble and just talk. Voice note or text, we read every one.', sfx: 'pop' },
-  { target: '#nav [data-v=rules]', title: 'RULES + REPLAY', text: 'The rules live here, and you can replay this tour any time.', say: 'Rules live here, and you can replay this tour any time.' },
-  { emoji: '🚶', title: 'PLAY SMART. DON’T RUN.', text: 'Respect people’s privacy. Stay in public, safe areas. Now go hunt!', say: 'Play smart. Don’t run. Respect people’s privacy. Stay in public, safe areas. Now go hunt!', sfx: 'horn' }
+export const TOUR = (nick, o = {}) => [
+  { emoji: '🪳', title: `YO ${nick}! LET’S GO`, text: 'Quick tour, 30 seconds. I’ll show you exactly where to tap.', say: `Yo ${nick}! Quick tour. I will show you exactly where to tap.`, sfx: 'level' },
+  { target: o.pin || '#map', title: 'STEP 1 · TAP THE PIN', text: 'See the pulsing pin with Gyanu’s face? That’s where he’s hiding. Tap it.', say: 'Step one. See the pulsing pin with Gyanu’s face? That is where he is hiding. Tap it.', sfx: 'pop' },
+  { target: '#sheet', title: 'STEP 2 · READ THE HINT', text: 'Zone, points and a hint live here. Read it, then walk there. No running.', say: 'Step two. Read the hint, then walk to that spot. No running.' },
+  { target: '#scanBtn', title: 'STEP 3 · SCAN FOR GYANU', text: 'Found the Gyanu print? Tap this, point the camera at it and shoot. Never people’s faces.', say: 'Step three. Found the Gyanu print? Tap this button, point the camera at it, and shoot. Never people’s faces.', sfx: 'whoosh' },
+  { target: '#wBtn', title: 'WAITING? PLAY!', text: 'WHACK, PUNCH or CALL THE CROWD while you walk. They all hit the leaderboard.', say: 'Waiting around? Whack, punch, or call the crowd while you walk.', sfx: 'pop' },
+  { target: '.top .pts', title: 'YOUR POINTS', text: 'Faster finds and streaks = more points. They land up here.', say: 'Faster finds and streaks mean more points. They land up here.', sfx: 'cash' },
+  { target: '#nav [data-v=score]', title: 'CLIMB THE BOARD', text: 'Leaderboards: everyone, today, nearby, whack and punch.', say: 'Climb the leaderboard. Everyone, today, nearby, whack and punch.' },
+  { target: '#nav [data-v=scene]', title: 'THE SCENE', text: 'Food, water, toilets, shade, charging. Spot something useful? Drop a pin.', say: 'The scene tab. Food, water, toilets, shade, charging. Spot something useful? Drop a pin.' },
+  { emoji: '🚶', title: 'GO FIND HIM!', text: 'Tap the pulsing pin to start. Walk, don’t run, and respect people’s privacy.', say: 'Go find him! Tap the pulsing pin to start. Walk, don’t run, and respect people’s privacy.', sfx: 'horn' }
 ];
 
 const A = ['SODA', 'LEMON', 'GINGER', 'CHAI', 'VADA', 'POP', 'MASALA', 'CUTTING', 'SAMOSA', 'NIMBU', 'JALEBI', 'BHEL'];
