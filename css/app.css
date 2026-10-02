@@ -381,3 +381,15 @@ html,body{position:fixed;inset:0;width:100%;height:100%;overflow:hidden;overscro
 
 .edition.under{align-self:center;transform:rotate(2deg);margin:-4px 0 6px;font-size:15px;padding:6px 12px}
 @media (max-height:700px){.edition.under{font-size:12px;padding:4px 9px;margin:-2px 0 2px}}
+
+/* ---- compact hunt sheet: leave the map room ---- */
+.acts{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:8px}
+.acts button{font:12px var(--display);letter-spacing:.2px;background:var(--teal);color:#fff;border:2.5px solid var(--ink);border-radius:10px;box-shadow:2px 2px 0 var(--ink);padding:4px 0 5px;line-height:1.1;display:flex;flex-direction:column;align-items:center;min-width:0}
+.acts button i{font-style:normal;font-size:20px;line-height:1.15}.acts .pk{background:var(--pink)}.acts .hy{background:var(--yellow);color:var(--ink)}
+.sheet .panel{padding:8px 10px}.sheet .huntmeta{margin:2px 0 4px}.sheet .hint{font-size:14.5px;line-height:1.2;margin:0 0 4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.sheet .btn{min-height:50px}.sheet .pickhunts{margin:0 0 6px}.sheet .pickhunts .chip{padding:3px 9px;font-size:12px}
+.roamline{font-size:12.5px;margin:0 0 3px;font-weight:700}
+.ticker{height:22px;font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;line-height:19px;padding:0 8px}
+.status{flex-wrap:nowrap;overflow:hidden}.status .chip{font-size:11.5px;padding:3px 8px}
+.coach{font-size:13px;padding:6px 14px}
+.views{top:calc(var(--top) + 22px)}

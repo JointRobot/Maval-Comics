@@ -63,7 +63,7 @@ function fillStatic() {
   $('#sloganTitle').textContent = T.sloganTitle; $('#sloganHelp').textContent = T.sloganHelp; $('#sloganCustom').placeholder = T.sloganPh;
   $('#otpTitle').textContent = T.otpTitle; $('#otpHelp').textContent = T.otpHelp; $('#otpSend').textContent = T.otpSend;
   $('#landCredit').innerHTML = `🪳 ${esc(CONFIG.credit)}`;
-  $('#joinGo').textContent = T.joinGo; $('#ticker').textContent = T.safety;
+  $('#joinGo').textContent = T.joinGo; $('#ticker').textContent = 'Play smart · don’t run · respect privacy · stay in safe areas';
   document.querySelectorAll('#nav button').forEach(b => (b.querySelector('span').textContent = T.nav[b.dataset.v] || 'SCENE'));
 }
 
@@ -209,7 +209,7 @@ function renderStatus(offline) {
   const s = st?.stats, chips = [];
   if (offline) chips.push(`<span class="chip alert">📶 weak network — retrying</span>`);
   if (st?.settings.finalLive) chips.push(`<span class="chip alert">FINAL GYANU LIVE</span>`);
-  if (s) chips.push(`<span class="chip">🟢 ${s.online} hunting</span>`, `<span class="chip">🎯 ${s.caught} caught today</span>`, `<button class="chip crowdchip" data-crowd="1">🪧 ${fmt(s.crowd || 0)} in the crowd</button>`, `<button class="chip crowdchip callchip" data-call="1">📣 CALL THE CROWD · ${st.me?.callsLeft ?? 5}</button>`);
+  if (s) chips.push(`<span class="chip">🟢 ${s.online} hunting</span>`, `<button class="chip crowdchip" data-crowd="1">🪧 ${fmt(s.crowd || 0)} in the crowd</button>`);
   if (s?.busy?.length) chips.push(`<span class="chip alert">⚠️ busy: ${s.busy.map(z => ZONES.find(q => q.id === z)?.short).join(', ')}</span>`);
   $('#status').innerHTML = chips.join('');
 }
@@ -228,6 +228,11 @@ function speedLine(h) {
   return `⚡ SPEED BONUS +${b} · ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
 }
 
+// The five side-games as one compact icon row: big enough to thumb, small enough to leave the map room.
+const actionRow = () => `<div class="acts">
+  <button id="wBtn"><i>🔨</i>WHACK</button><button id="pBtn"><i>🥊</i>PUNCH</button><button id="cBtn" class="pk"><i>📣</i>CALL</button>
+  <button id="dropBtn"><i>🎁</i>PLANT ${st.me.dropsLeft ?? 0}</button><button id="shBtn" class="hy"><i>🗣️</i>HAIYA</button></div>`;
+const wireActs = () => { const g = (i, f) => { const b = $(i); if (b) b.onclick = f; }; g('#wBtn', startWhack); g('#pBtn', startPunch); g('#cBtn', openCall); g('#dropBtn', () => openRoamDrop()); g('#shBtn', startShout); };
 function renderSheet() {
   if (!st || whack) { $('#sheet').innerHTML = ''; return; }
   const el = $('#sheet');
@@ -237,31 +242,25 @@ function renderSheet() {
   }
   const open = openHunts(), roams = roamPins();
   if (!open.length && !roams.length) {
-    el.innerHTML = `<div class="panel"><h3>${esc(T.noHunts)}</h3><p class="muted" style="margin:6px 0 10px">${esc(T.noHuntsSub)}</p>
-      <div class="row"><button class="btn teal" id="wBtn" style="font-size:14px">🔨 WHACK</button><button class="btn teal" id="pBtn" style="font-size:14px">🥊 PUNCH</button><button class="btn pink" id="cBtn" style="font-size:14px">📣 CALL</button></div><div class="row" style="margin-top:8px"><button class="btn ghost" id="dropBtn">🎁 PLANT</button><button class="btn ghost" id="shBtn">🗣️ VASTA GYANU HAIYA</button></div></div>`;
-    $('#shBtn').onclick = startShout; $('#dropBtn').onclick = () => openRoamDrop(); $('#wBtn').onclick = startWhack; $('#pBtn').onclick = startPunch; $('#cBtn').onclick = openCall;
-    return;
+    el.innerHTML = `<div class="panel"><h3>${esc(T.noHunts)}</h3><p class="muted" style="margin:4px 0 8px;font-size:13px">${esc(T.noHuntsSub)}</p>${actionRow()}</div>`;
+    wireActs(); return;
   }
   const all = open.concat(roams);
   if (!all.some(h => h.id === selHunt)) selHunt = all[0].id;
   const sel = all.find(x => x.id === selHunt);
   map.setState({ selected: sel.id });
-  const chipRow = `${all.length > 1 ? `<div class="pickhunts">${all.map(o => `<button class="chip${o.id === sel.id ? ' on' : ''}" data-h="${o.id}">${o.roam ? (o.kind === 'golden' ? '✨' : o.kind === 'player' ? '🎁' : '🪳') : o.type === 'golden' ? '✨' : o.type === 'final' ? '💀' : '🎯'} ${esc(sname(o.zone))}</button>`).join('')}</div>` : ''}`;
+  const ico = o => o.roam ? (o.kind === 'golden' ? '✨' : o.kind === 'player' ? '🎁' : '🪳') : o.type === 'golden' ? '✨' : o.type === 'final' ? '💀' : '🎯';
+  const chipRow = all.length > 1 ? `<div class="pickhunts">${all.map(o => `<button class="chip${o.id === sel.id ? ' on' : ''}" data-h="${o.id}">${ico(o)} ${esc(sname(o.zone))}</button>`).join('')}</div>` : '';
+  const wireChips = () => el.querySelectorAll('[data-h]').forEach(b => (b.onclick = () => { selHunt = b.dataset.h; renderSheet(); }));
   if (sel.roam) {
     const r = sel, ord = r.slots - r.left, pts = RULES.roamPts[r.kind]?.[ord] ?? 0, kt = ROAM.kindTag[r.kind];
     el.innerHTML = `<div class="panel roampanel">${chipRow}
       <div class="huntmeta"><span class="tag roam-${r.kind}">${kt}</span><b>📍 ${esc(zoneName(r.zone))}</b></div>
-      <p class="roamline"><span id="roamLeft">${r.left} of ${r.slots} spots left</span> · fades in <b id="roamClock">${mmss(r.endsAt - serverNow())}</b>${r.hops ? ' · 🔀 moves around' : ''}</p>
-      ${r.by ? `<p class="small muted" style="margin:0 0 4px">🎁 hidden by <b>${esc(r.by)}</b>${r.mine ? ' (you!)' : ''}</p>` : ''}
+      <p class="roamline">${r.left}/${r.slots} spots · fades in <b id="roamClock">${mmss(r.endsAt - serverNow())}</b>${r.hops ? ' · 🔀 on the move' : ''} · ${r.mine ? 'yours, +10 a catch' : r.got ? 'you got him' : `next catch +${pts}`}${r.by && !r.mine ? ` · 🎁 ${esc(r.by)}` : ''}</p>
       ${r.hint ? `<p class="hint">“${esc(r.hint)}”</p>` : ''}
-      ${r.mine ? `<p class="small" style="margin:6px 0 10px;font-weight:700">${esc(ROAM.mineNote)}</p>` : r.got ? `<p class="small" style="margin:6px 0 10px;font-weight:700">${esc(ROAM.gotNote)}</p>` : `<p class="small" style="margin:6px 0 10px;font-weight:700">${esc(ROAM.nextPts(pts, ord + 1))}</p>`}
-      <button class="btn pink" id="catchBtn" ${r.mine || r.got ? 'disabled' : ''}>${r.mine ? '🎁 YOURS · WAITING FOR CATCHERS' : r.got ? '✅ CAUGHT' : '🖐️ SLAP HIM'}</button>
-      <div class="row" style="margin-top:8px"><button class="btn teal" id="dropBtn" style="min-height:46px;font-size:13px">🎁 PLANT · ${st.me.dropsLeft ?? 0}</button><button class="btn teal" id="wBtn" style="min-height:46px;font-size:14px">🔨 WHACK</button><button class="btn teal" id="pBtn" style="min-height:46px;font-size:14px">🥊 PUNCH</button></div>
-      <button class="btn ghost" id="shBtn" style="margin-top:8px;min-height:42px;font-size:13px">🗣️ VASTA GYANU HAIYA</button>
-    </div>`;
-    $('#shBtn').onclick = startShout;
-    el.querySelectorAll('[data-h]').forEach(b => (b.onclick = () => { selHunt = b.dataset.h; renderSheet(); }));
-    $('#catchBtn').onclick = () => openCatch(r); $('#dropBtn').onclick = () => openRoamDrop(); $('#wBtn').onclick = startWhack; $('#pBtn').onclick = startPunch;
+      <button class="btn pink" id="catchBtn" ${r.mine || r.got ? 'disabled' : ''}>${r.mine ? '🎁 YOURS · WAITING' : r.got ? '✅ CAUGHT' : '🖐️ SLAP HIM'}</button>
+      ${actionRow()}</div>`;
+    wireChips(); wireActs(); $('#catchBtn').onclick = () => openCatch(r);
     return;
   }
   const h = sel;
@@ -269,17 +268,13 @@ function renderSheet() {
   const tag = h.type === 'golden' ? '✨ GOLDEN' : h.type === 'final' ? '💀 FINAL BOSS' : 'CLASSIC';
   el.innerHTML = `<div class="panel">
     ${chipRow}
-    <h3>${esc(T.hiding)}</h3>
     <div class="huntmeta"><span class="tag ${h.type}">${tag}</span><b>📍 ${esc(zoneName(h.zone))}</b>${h.finds ? `<span class="small muted">· ${h.finds} found him</span>` : `<span class="small" style="color:var(--pink);font-weight:800">· nobody yet!</span>`}</div>
     ${h.hint ? `<p class="hint">“${esc(h.hint)}”</p>` : ''}
-    <p class="speed" id="speedLine">${speedLine(h)}</p>
-    <p class="small muted" style="margin:2px 0 10px">${h.pending ? '⏳ ' + esc(T.pending) : esc(T.tries(triesLeft))} · ${esc(T.safetyShort)}</p>
+    <p class="small muted" style="margin:0 0 6px"><span class="speed" id="speedLine">${speedLine(h)}</span> ${h.pending ? '⏳ ' + esc(T.pending) : esc(T.tries(triesLeft))} · walk, don’t run</p>
     <button class="btn pink" id="scanBtn" ${h.pending || triesLeft <= 0 ? 'disabled' : ''}>📸 ${esc(T.scan)}</button>
-    <div class="row" style="margin-top:8px"><button class="btn teal" id="wBtn" style="min-height:46px;font-size:14px">🔨 WHACK</button><button class="btn teal" id="pBtn" style="min-height:46px;font-size:14px">🥊 PUNCH</button><button class="btn pink" id="cBtn" style="min-height:46px;font-size:14px">📣 CALL</button></div>
-    <div class="row" style="margin-top:8px"><button class="btn ghost" id="dropBtn" style="min-height:42px;font-size:13px">🎁 PLANT · ${st.me.dropsLeft ?? 0} left</button><button class="btn ghost" id="shBtn" style="min-height:42px;font-size:13px">🗣️ VASTA GYANU HAIYA</button></div>
+    ${actionRow()}
   </div>`;
-  el.querySelectorAll('[data-h]').forEach(b => (b.onclick = () => { selHunt = b.dataset.h; renderSheet(); }));
-  $('#shBtn').onclick = startShout; $('#dropBtn').onclick = () => openRoamDrop(); $('#scanBtn').onclick = () => scan(h); $('#wBtn').onclick = startWhack; $('#pBtn').onclick = startPunch; $('#cBtn').onclick = openCall;
+  wireChips(); wireActs(); $('#scanBtn').onclick = () => scan(h);
   coolTick();
 }
 // After a shot, the button counts down the cooldown instead of letting people spam.
