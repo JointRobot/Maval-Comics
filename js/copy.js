@@ -77,18 +77,18 @@ export const T = {
   sloganHelp: 'Your slogan shows on the leaderboard + your share card. Or write your own.',
   sloganCustom: 'Write my own',
   sloganPh: 'max 60 characters, keep it fun',
-  joinGo: 'LET’S GOOO',
+  joinGo: 'LOCK IN, NO CAP',
   otpTitle: 'Quick verify',
   otpHelp: 'We text a code once. Your number is never shown to anyone and never on the leaderboard.',
   otpSend: 'SEND CODE', otpVerify: 'VERIFY',
   otpDemo: c => `Demo mode — your code is ${c}`,
 
-  hiding: 'GYANU IS HIDING.',
+  hiding: 'GYANU IS HIDING. FIND HIM.',
   hidingSub: 'Scope the map. Tap a ping. Go find him — at walking speed, bestie.',
   noHunts: 'Gyanu is in his villain era (offline).',
-  noHuntsSub: 'Next appearance drops soon. Stay hydrated, stay put.',
-  scan: 'SCAN FOR GYANU',
-  takePhoto: 'TAKE PHOTO',
+  noHuntsSub: 'Next drop is cooking. Whack, punch, or shout while you wait.',
+  scan: 'SNAP HIM, NO CAP',
+  takePhoto: 'SNAP IT',
   frameTip: 'Frame Gyanu, not people’s faces.',
   foundAlready: 'Already caught this one. W.',
   pending: 'With the judges',
@@ -96,7 +96,7 @@ export const T = {
 
   camTitle: 'Camera time',
   camWhy: 'We need your camera to snap Gyanu. The photo is shrunk on your phone and only a tiny copy is sent for checking — then auto-deleted. No gallery access. No location.',
-  camOk: 'OKAY, OPEN CAMERA', camNo: 'Not now',
+  camOk: 'OPEN CAMERA, BET', camNo: 'Nah, later',
   camFail: 'Camera said no. Use the button below to snap one instead.',
   camFallback: 'OPEN PHONE CAMERA',
 
@@ -104,7 +104,7 @@ export const T = {
   found: 'GYANU FOUND!',
   foundSub: ['No cap, that’s him.', 'You ate that.', 'Main character behaviour.', 'Certified Gyanu spotter.'],
   moved: 'Gyanu has moved.',
-  huntAgain: 'HUNT AGAIN',
+  huntAgain: 'RUN IT BACK',
   sentJudges: 'SENT TO THE JUDGES',
   sentSub: 'Lowkey blurry, so a human is checking. Points drop in a min.',
   dupTitle: 'NAH, SEEN THAT ONE',
@@ -126,7 +126,7 @@ export const T = {
 
   endTitle: 'HUNT COMPLETE',
   endWinner: n => `${n} caught the Final Gyanu`,
-  share: 'SHARE SCORE',
+  share: 'FLEX YOUR SCORE',
 
   nav: { hunt: 'HUNT', score: 'SCORE', rules: 'RULES', profile: 'PROFILE' },
   boardTitle: 'TOP HUNTERS',
@@ -134,7 +134,7 @@ export const T = {
   nearbyHelp: z => z ? `Hunters whose last find was at ${z}. Based on Gyanu zones only — we never use GPS.` : 'Find one Gyanu and we’ll show the hunters in your zone. No GPS, ever.',
   emptyBoard: 'Nobody’s scored yet. Be the first. Be legendary.',
 
-  deleteBtn: 'DELETE MY DATA',
+  deleteBtn: 'DELETE ME FR',
   deleteConfirm: 'This wipes your hunter, score, slogan and photos. For real?',
   deleted: 'Gone. Like it never happened.',
   banned: 'Your account is on hold. Find the Gyanu crew in the orange tees.',
@@ -143,14 +143,14 @@ export const T = {
   homeBtn: 'NOT AT THE EVENT? WHACK-A-GYANU',
   homeTitle: 'WHACK-A-GYANU',
   homeSub: '30 seconds. Gyanu pops up all over the ground. Bonk him. +1 each, golden +5. Don’t tap the cockroach — he’s one of us (−3).',
-  homeStart: 'START ROUND',
-  homeAgain: 'AGAIN, OBVIOUSLY',
+  homeStart: 'LET HIM COOK',
+  homeAgain: 'RUN IT BACK',
   homeDone: n => n >= 40 ? 'Cracked. Touch grass after this.' : n >= 20 ? 'Okay you ate.' : n >= 8 ? 'Mid, but we move.' : 'Thumbs warming up, it’s fine.',
   homeBest: n => `Your best: ${n}`,
   homeRoach: 'NOT THE ROACH 😭',
   punchTitle: 'PUNCH',
   punchSub: '15 seconds. Tap the bag as fast as your thumb can. Every punch counts. Highest total wins the board. Only the bag gets hurt, he’s fine.',
-  punchStart: 'GLOVES ON',
+  punchStart: 'GLOVES ON, FR',
   punchDone: n => n >= 100 ? 'Thumb of steel. Please hydrate.' : n >= 70 ? 'Okay, gym bro.' : n >= 40 ? 'Solid warm-up.' : 'Gentle. The bag felt a breeze.',
   punchBoardNote: 'Most punches in 15 seconds. Same board for everyone, at the ground or at home.',
   homeBoardNote: 'At-home scores live on their own board, so the ground hunt stays fair.'
@@ -203,18 +203,29 @@ export const ROAM = {
   hopped: (a, b) => `🔀 He ran from ${a} to ${b}! Change of plan`,
   lastSpot: z => `⚠️ Last spot left at ${z}. Quick!`,
   gone: '🪳 He dipped! Eyes on the map for the next one',
-  catchTitle: 'CATCH HIM!', catchSub: 'Tap THROW when Gyanu is in the green. Miss and he gets faster.',
+  catchTitle: 'SLAP HIM!', catchSub: 'Hit SLAP when his face is in the green. Miss and he gets faster, lol.',
   catchCode: z => `You must be there. Find the Gyanu poster at ${z} and type its code.`,
   catchHint: 'Watch the green zone…', needCodeMsg: 'Type the zone code first (it is on the poster there).',
-  miss: ['So close! Again', 'He slipped, try again', 'Too early. Breathe, throw', 'Gyanu laughed at you', 'Missed by a mooch'],
-  winTitle: n => (n === 1 ? 'FIRST CATCH!' : `CAUGHT #${n}!`),
+  miss: ['Bro swung at air 😭', 'He dodged. Embarrassing', 'Too early, calm down', 'Gyanu is laughing at you', 'Aim, bestie, aim'],
+  winTitle: n => (n === 1 ? 'FIRST BLOOD!' : `SLAPPED #${n}!`),
   winSub: left => `${left} more spot${left === 1 ? '' : 's'} left. Tell your friends before he is gone`,
-  lastCatcher: 'You took the last spot. Gyanu is gone from the map!', winNext: 'FIND THE NEXT ONE',
-  dropTitle: 'HIDE YOUR GYANU', dropSub: 'Drop him where you are. 4 players can catch him. You earn +10 each time!',
+  lastCatcher: 'You took the LAST spot. Gyanu is gone from the map. W.', winNext: 'NEXT ONE, LET’S GO',
+  dropTitle: 'PLANT A GYANU', dropSub: 'Drop him where you stand. 4 players can catch him. You get +10 each time. Passive income, bro.',
   hints: ['Near the chai stall', 'Behind the big banner', 'Look up!', 'By the water point', 'Near the stage steps'],
   noDrops: 'Three drops an hour is the limit. Go catch some instead!', alreadyOut: 'Your Gyanu is still out there. Wait till he is found.',
   dropped: '🎁 Hidden! Stay nearby and watch the map. You earn +10 per catch',
   dropCaught: (nick, pts, full) => `🎁 ${nick} caught your Gyanu! +${pts}${full ? ' (all 4 found him: bonus!)' : ''}`
+};
+
+// ---- Shout-off: keep yelling the chant and Gyanu runs from the dot. Go quiet and he sprints at it.
+export const SHOUT = {
+  chant: 'HIYA VASHTAKONA!', chantAlt: ['HIYA VASHTAKONA', 'VASHTAKONA HIYA', 'HIYA HIYA VASHTAKONA'],
+  title: 'HIYA VASHTAKONA!', sub: 'Keep shouting the chant and Gyanu runs away from the dot. Go quiet and he sprints at it. Survive 30 seconds and you win. Mic only hears loudness, nothing is recorded.',
+  start: 'START SHOUTING', mic: 'Allow the mic when your phone asks. Loud and proud!',
+  noMic: 'No mic? No problem. Mash the SHOUT button instead.', go: 'SHOUT!!',
+  low: ['LOUDER, BESTIE', 'HE IS COMING 😭', 'DON’T GO QUIET', 'KEEP YELLING', 'SHOUT OR LOSE'], ok: ['HE IS RUNNING!', 'W CHANT', 'KEEP IT UP', 'SCREAM IT', 'GYANU IS SCARED'],
+  win: 'YOU HELD THE DOT', winSub: 'Gyanu ran away crying. Your throat did the job.', lose: 'HE REACHED THE DOT', loseSub: 'You went quiet and he walked right in. Rude.',
+  again: 'RUN IT BACK', done: n => n >= 30 ? 'Lungs of steel. Chai break, legend.' : n >= 15 ? 'Good run. Hydrate.' : 'He got you. Louder next time.'
 };
 
 const A = ['SODA', 'LEMON', 'GINGER', 'CHAI', 'VADA', 'POP', 'MASALA', 'CUTTING', 'SAMOSA', 'NIMBU', 'JALEBI', 'BHEL'];

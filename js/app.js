@@ -11,7 +11,7 @@ import { micMeter, motionMeter, tapMeter } from './sensors.js';
 import { shareCard } from './share.js';
 import { play, combo, unlock, setMuted, sfxState, stopSpeak } from './sfx.js';
 import { runTour, tourOpen } from './tour.js';
-import { ROAM } from './copy.js';
+import { ROAM, SHOUT } from './copy.js';
 import { openFeedback } from './feedback.js';
 
 // ---------------------------------------------------------------- helpers
@@ -138,8 +138,9 @@ function suggestions() {
   if (!roamPins().some(r => r.mine) && (me.dropsLeft ?? 0) > 0) L.push({ t: '🎁 Hide YOUR Gyanu for others. You earn +10 per catch', go: () => openRoamDrop() });
   if (Date.now() - (me.lastSubmitAt || 0) > 0 && !F && !R.length) L.push({ t: '🔨 Quiet right now. Whack a Gyanu while the next one spawns', go: startWhack });
   L.push({ t: me.callsLeft > 0 ? '📣 Call the crowd and see how many phones you move' : '📍 Spotted water or food? Pin it on The Scene for points', go: me.callsLeft > 0 ? openCall : () => go('scene') });
+  L.push({ t: '🗣️ Shout-off: yell HIYA VASHTAKONA, keep Gyanu off the dot', go: startShout });
   L.push({ t: '🥊 Waiting for a spawn? Punch it out for the leaderboard', go: startPunch });
-  return L.slice(0, 4);
+  return L.slice(0, 5);
 }
 function paintCoach(rotate) {
   if (!coachEl) { coachEl = document.createElement('div'); coachEl.className = 'coach'; $('#v-hunt').appendChild(coachEl); coachEl.onclick = () => { coachList[coachI % coachList.length]?.go?.(); }; }
@@ -237,8 +238,8 @@ function renderSheet() {
   const open = openHunts(), roams = roamPins();
   if (!open.length && !roams.length) {
     el.innerHTML = `<div class="panel"><h3>${esc(T.noHunts)}</h3><p class="muted" style="margin:6px 0 10px">${esc(T.noHuntsSub)}</p>
-      <div class="row"><button class="btn teal" id="wBtn" style="font-size:14px">🔨 WHACK</button><button class="btn teal" id="pBtn" style="font-size:14px">🥊 PUNCH</button><button class="btn pink" id="cBtn" style="font-size:14px">📣 CALL</button></div><button class="btn ghost" id="dropBtn" style="margin-top:8px">🎁 HIDE YOUR OWN GYANU</button></div>`;
-    $('#dropBtn').onclick = () => openRoamDrop(); $('#wBtn').onclick = startWhack; $('#pBtn').onclick = startPunch; $('#cBtn').onclick = openCall;
+      <div class="row"><button class="btn teal" id="wBtn" style="font-size:14px">🔨 WHACK</button><button class="btn teal" id="pBtn" style="font-size:14px">🥊 PUNCH</button><button class="btn pink" id="cBtn" style="font-size:14px">📣 CALL</button></div><div class="row" style="margin-top:8px"><button class="btn ghost" id="dropBtn">🎁 PLANT</button><button class="btn ghost" id="shBtn">🗣️ SHOUT-OFF</button></div></div>`;
+    $('#shBtn').onclick = startShout; $('#dropBtn').onclick = () => openRoamDrop(); $('#wBtn').onclick = startWhack; $('#pBtn').onclick = startPunch; $('#cBtn').onclick = openCall;
     return;
   }
   const all = open.concat(roams);
@@ -254,9 +255,11 @@ function renderSheet() {
       ${r.by ? `<p class="small muted" style="margin:0 0 4px">🎁 hidden by <b>${esc(r.by)}</b>${r.mine ? ' (you!)' : ''}</p>` : ''}
       ${r.hint ? `<p class="hint">“${esc(r.hint)}”</p>` : ''}
       ${r.mine ? `<p class="small" style="margin:6px 0 10px;font-weight:700">${esc(ROAM.mineNote)}</p>` : r.got ? `<p class="small" style="margin:6px 0 10px;font-weight:700">${esc(ROAM.gotNote)}</p>` : `<p class="small" style="margin:6px 0 10px;font-weight:700">${esc(ROAM.nextPts(pts, ord + 1))}</p>`}
-      <button class="btn pink" id="catchBtn" ${r.mine || r.got ? 'disabled' : ''}>${r.mine ? '🎁 YOURS · WAITING FOR CATCHERS' : r.got ? '✅ CAUGHT' : '🎯 CATCH HIM'}</button>
-      <div class="row" style="margin-top:8px"><button class="btn teal" id="dropBtn" style="min-height:46px;font-size:13px">🎁 HIDE · ${st.me.dropsLeft ?? 0}</button><button class="btn teal" id="wBtn" style="min-height:46px;font-size:14px">🔨 WHACK</button><button class="btn teal" id="pBtn" style="min-height:46px;font-size:14px">🥊 PUNCH</button></div>
+      <button class="btn pink" id="catchBtn" ${r.mine || r.got ? 'disabled' : ''}>${r.mine ? '🎁 YOURS · WAITING FOR CATCHERS' : r.got ? '✅ CAUGHT' : '🖐️ SLAP HIM'}</button>
+      <div class="row" style="margin-top:8px"><button class="btn teal" id="dropBtn" style="min-height:46px;font-size:13px">🎁 PLANT · ${st.me.dropsLeft ?? 0}</button><button class="btn teal" id="wBtn" style="min-height:46px;font-size:14px">🔨 WHACK</button><button class="btn teal" id="pBtn" style="min-height:46px;font-size:14px">🥊 PUNCH</button></div>
+      <button class="btn ghost" id="shBtn" style="margin-top:8px;min-height:42px;font-size:13px">🗣️ SHOUT-OFF · HIYA VASHTAKONA</button>
     </div>`;
+    $('#shBtn').onclick = startShout;
     el.querySelectorAll('[data-h]').forEach(b => (b.onclick = () => { selHunt = b.dataset.h; renderSheet(); }));
     $('#catchBtn').onclick = () => openCatch(r); $('#dropBtn').onclick = () => openRoamDrop(); $('#wBtn').onclick = startWhack; $('#pBtn').onclick = startPunch;
     return;
@@ -273,10 +276,10 @@ function renderSheet() {
     <p class="small muted" style="margin:2px 0 10px">${h.pending ? '⏳ ' + esc(T.pending) : esc(T.tries(triesLeft))} · ${esc(T.safetyShort)}</p>
     <button class="btn pink" id="scanBtn" ${h.pending || triesLeft <= 0 ? 'disabled' : ''}>📸 ${esc(T.scan)}</button>
     <div class="row" style="margin-top:8px"><button class="btn teal" id="wBtn" style="min-height:46px;font-size:14px">🔨 WHACK</button><button class="btn teal" id="pBtn" style="min-height:46px;font-size:14px">🥊 PUNCH</button><button class="btn pink" id="cBtn" style="min-height:46px;font-size:14px">📣 CALL</button></div>
-    <button class="btn ghost" id="dropBtn" style="margin-top:8px;min-height:42px;font-size:13px">🎁 HIDE YOUR OWN GYANU · ${st.me.dropsLeft ?? 0} left</button>
+    <div class="row" style="margin-top:8px"><button class="btn ghost" id="dropBtn" style="min-height:42px;font-size:13px">🎁 PLANT · ${st.me.dropsLeft ?? 0} left</button><button class="btn ghost" id="shBtn" style="min-height:42px;font-size:13px">🗣️ SHOUT-OFF</button></div>
   </div>`;
   el.querySelectorAll('[data-h]').forEach(b => (b.onclick = () => { selHunt = b.dataset.h; renderSheet(); }));
-  $('#dropBtn').onclick = () => openRoamDrop(); $('#scanBtn').onclick = () => scan(h); $('#wBtn').onclick = startWhack; $('#pBtn').onclick = startPunch; $('#cBtn').onclick = openCall;
+  $('#shBtn').onclick = startShout; $('#dropBtn').onclick = () => openRoamDrop(); $('#scanBtn').onclick = () => scan(h); $('#wBtn').onclick = startWhack; $('#pBtn').onclick = startPunch; $('#cBtn').onclick = openCall;
   coolTick();
 }
 // After a shot, the button counts down the cooldown instead of letting people spam.
@@ -434,7 +437,7 @@ function openCatch(r0) {
     ${need ? `<input class="field" id="rcode" maxlength="8" placeholder="zone code" autocapitalize="characters" style="max-width:200px;text-align:center;margin-bottom:8px">` : ''}
     <div class="tbar" id="tbar"><div class="tzone" id="tz"></div><div class="tmark" id="tm"><img src="img/gyanu.svg" alt=""></div><div class="slap" id="slap">🖐️</div></div>
     <p class="small" id="tmsg" style="margin:8px 0 10px;min-height:20px">${esc(ROAM.catchHint)}</p>
-    <div class="sw stack"><button class="btn pink" id="throw">🎯 THROW!</button><button class="link" style="color:#fff" id="rx">leave him</button></div>`);
+    <div class="sw stack"><button class="btn pink" id="throw">🖐️ SLAP!</button><button class="link" style="color:#fff" id="rx">nvm, bye</button></div>`);
   const bar = o.querySelector('#tbar'), tm = o.querySelector('#tm'), tz = o.querySelector('#tz'), msg = o.querySelector('#tmsg');
   const setZone = () => { zw = Math.max(0.16, 0.3 - (speed - 1.5) * 0.04); zc = 0.25 + Math.random() * 0.5; tz.style.left = (zc - zw / 2) * 100 + '%'; tz.style.width = zw * 100 + '%'; };
   setZone(); let pos = 0, t0 = performance.now();
@@ -477,7 +480,7 @@ function openRoamDrop() {
     <div class="chips" id="rh">${ROAM.hints.map(x => `<button class="chip" data-t="${esc(x)}">${esc(x)}</button>`).join('')}</div>
     <input class="field" id="rhi" maxlength="40" placeholder="or write your own clue" style="max-width:340px;margin:6px 0">
     <p class="err" id="re"></p>
-    <div class="sw stack"><button class="btn pink" id="rgo">🎁 HIDE HIM</button><button class="link" style="color:#fff" id="rx">cancel</button></div>`);
+    <div class="sw stack"><button class="btn pink" id="rgo">🎁 PLANT HIM</button><button class="link" style="color:#fff" id="rx">cancel</button></div>`);
   const sel = (box, attr, set) => box.onclick = e => { const b = e.target.closest(`[${attr}]`); if (!b) return; box.querySelectorAll('.chip').forEach(q => q.classList.remove('on')); b.classList.add('on'); set(b.getAttribute(attr)); };
   sel(o.querySelector('#rz'), 'data-z', v => (z = v)); sel(o.querySelector('#rh'), 'data-t', v => { o.querySelector('#rhi').value = v; });
   o.querySelector('#rx').onclick = () => o.remove();
@@ -885,11 +888,60 @@ function runPunch() {
     confetti(n > 70 ? 70 : 20); play(n > 40 ? 'tada' : 'bruh');
     const d = layer(`<h2 class="big">${n} PUNCHES</h2><p class="d" style="font-size:20px;color:var(--pink);margin:10px 0">${esc(T.punchDone(n))}</p>
       ${r.ok ? `<p>${r.best ? '🏆 NEW PERSONAL BEST' : 'Your best: ' + r.punchBest}</p>` : `<p>${esc(r.reason)}</p>`}
-      <div class="sw stack" style="margin-top:16px"><button class="btn pink" id="pA">AGAIN, OBVIOUSLY</button><button class="btn ghost" style="color:var(--ink)" id="pB">LEADERBOARD</button><button class="link" style="color:#fff" id="pC">back to the hunt</button></div>`);
+      <div class="sw stack" style="margin-top:16px"><button class="btn pink" id="pA">RUN IT BACK</button><button class="btn ghost" style="color:var(--ink)" id="pB">LEADERBOARD</button><button class="link" style="color:#fff" id="pC">back to the hunt</button></div>`);
     d.querySelector('#pA').onclick = () => { d.remove(); runPunch(); };
     d.querySelector('#pB').onclick = () => { d.remove(); scope = 'punch'; go('score'); };
     d.querySelector('#pC').onclick = () => { d.remove(); refresh(); };
     refresh();
+  };
+}
+
+// ---------------------------------------------------------------- shout-off: keep yelling and Gyanu stays away from the dot
+function startShout() {
+  go('hunt'); closeAll();
+  const o = layer(`<img class="mascot" src="img/gyanu.svg" alt=""><h2 class="big" style="font-size:34px;margin-top:8px">${esc(SHOUT.title)}</h2>
+    <p style="margin:10px 0 8px;font-weight:600">${esc(SHOUT.sub)}</p><p class="small" style="margin-bottom:14px">${esc(SHOUT.mic)}</p>
+    <div class="sw stack"><button class="btn pink" id="sGo">🗣️ ${esc(SHOUT.start)}</button><button class="link" style="color:#fff" id="sX">nah</button></div>`);
+  o.querySelector('#sX').onclick = () => o.remove();
+  o.querySelector('#sGo').onclick = async () => {
+    let m = null, tapped = 0;
+    try { m = await micMeter(); } catch { m = null; }
+    o.remove(); runShout(m, () => { const v = tapped; tapped = 0; return v; }, () => { tapped += 1; });
+  };
+}
+function runShout(mic, takeTaps, addTap) {
+  const DUR = 30000; let dist = 0.8, over = false, t0 = performance.now(), last = t0, base = 0, calib = [], msgI = 0, loud = 0, safeMs = 0;
+  const o = layer(`<div class="punchhud"><span class="chip" id="sT">⏱ 30s</span><span class="chip" id="sM" style="margin-left:auto">${mic ? '🎙️ live' : '👆 tap mode'}</span></div>
+    <h2 class="big shchant" id="shC">${esc(SHOUT.chant)}</h2>
+    <div class="shlane" id="lane"><div class="shdot">🎯</div><div class="shg" id="shg"><img src="img/gyanu.svg" alt=""></div><div class="shmeter"><i id="shL"></i></div></div>
+    <p class="small" id="shMsg" style="margin-top:8px;min-height:22px">${esc(mic ? SHOUT.mic : SHOUT.noMic)}</p>
+    ${mic ? '' : `<button class="btn pink" id="shTap" style="max-width:300px;margin-top:6px">${esc(SHOUT.go)}</button>`}`, 'punchov');
+  const g = o.querySelector('#shg'), L = o.querySelector('#shL'), msg = o.querySelector('#shMsg'), T0 = o.querySelector('#sT'), C = o.querySelector('#shC');
+  if (!mic) o.querySelector('#shTap').addEventListener('pointerdown', e => { e.preventDefault(); addTap(); buzz(10); });
+  const tick = setInterval(() => {
+    if (over) return; const now = performance.now(), dt = (now - last) / 1000; last = now; const el = now - t0;
+    let lv; if (mic) { lv = mic.level(); if (el < 1200) { calib.push(lv); base = calib.reduce((a, b) => a + b, 0) / calib.length; } } else lv = Math.min(1, takeTaps() * 0.22 + loud * 0.6);
+    loud = lv; const thr = mic ? Math.max(0.3, base + 0.16) : 0.2, shouting = el > 1200 && lv > thr; // first 1.2s is a free grace + noise calibration
+    const prog = el / DUR, creep = 0.1 + prog * 0.13; // he gets hungrier as time runs out
+    dist = Math.max(0, Math.min(1, dist + (shouting ? 0.3 * Math.min(1, (lv - thr) / 0.25 + 0.4) * dt : -creep * dt)));
+    g.style.top = `calc(${(1 - dist) * 100}% * 0.82 + 4px)`; g.classList.toggle('run', shouting); L.style.height = Math.round(lv * 100) + '%'; L.classList.toggle('hot', shouting);
+    C.classList.toggle('on', shouting);
+    if (shouting) safeMs += dt * 1000;
+    if (Math.floor(el / 900) !== msgI) { msgI = Math.floor(el / 900); msg.textContent = el < 1200 ? SHOUT.mic : pick(shouting ? SHOUT.ok : SHOUT.low); }
+    T0.textContent = '⏱ ' + Math.max(0, Math.ceil((DUR - el) / 1000)) + 's';
+    if (dist <= 0.02) end(false); else if (el >= DUR) end(true);
+  }, 80);
+  const end = win => {
+    if (over) return; over = true; clearInterval(tick); mic?.stop(); o.remove();
+    const secs = Math.round(safeMs / 1000), best = Math.max(Number(lsGet('gh_shout_best') || 0), win ? 30 : 0, secs);
+    lsSet('gh_shout_best', String(best));
+    if (win) { confetti(70); combo('cash', 'level'); buzz([60, 40, 120]); } else { play('bruh'); buzz(60); }
+    const d = layer(`<img class="mascot" src="img/gyanu.svg" alt=""><h2 class="big" style="margin-top:8px">${esc(win ? SHOUT.win : SHOUT.lose)}</h2>
+      <p style="margin:10px 0">${esc(win ? SHOUT.winSub : SHOUT.loseSub)}</p><p class="d" style="font-size:20px;color:var(--pink);margin:6px 0">${esc(SHOUT.done(secs))}</p>
+      <p class="small">${secs}s of shouting · best ${best}s</p>
+      <div class="sw stack" style="margin-top:16px"><button class="btn pink" id="sA">${esc(SHOUT.again)}</button><button class="link" style="color:#fff" id="sB">back to the hunt</button></div>`, win ? 'burst' : '');
+    d.querySelector('#sA').onclick = () => { d.remove(); startShout(); };
+    d.querySelector('#sB').onclick = () => { d.remove(); refresh(); };
   };
 }
 
