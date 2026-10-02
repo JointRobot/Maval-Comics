@@ -913,7 +913,7 @@ function startShout() {
   };
 }
 function runShout(mic, takeTaps, addTap) {
-  const DUR = 30000; let dist = 0.8, over = false, t0 = performance.now(), last = t0, base = 0, calib = [], msgI = 0, loud = 0, safeMs = 0;
+  const DUR = 30000; let dist = 0.8, over = false, t0 = performance.now(), last = t0, base = 0, calib = [], msgI = 0, loud = 0, safeMs = 0, peaks = [], wasLoud = false, chantUntil = 0;
   const o = layer(`<div class="punchhud"><span class="chip" id="sT">⏱ 30s</span><span class="chip" id="sM" style="margin-left:auto">${mic ? '🎙️ live' : '👆 tap mode'}</span></div>
     <h2 class="big shchant" id="shC">${esc(SHOUT.chant)}</h2>
     <div class="shlane" id="lane"><div class="shdot">🎯</div><div class="shg" id="shg"><img src="img/gyanu.svg" alt=""></div><div class="shmeter"><i id="shL"></i></div></div>
@@ -923,11 +923,21 @@ function runShout(mic, takeTaps, addTap) {
   if (!mic) o.querySelector('#shTap').addEventListener('pointerdown', e => { e.preventDefault(); addTap(); buzz(10); });
   const tick = setInterval(() => {
     if (over) return; const now = performance.now(), dt = (now - last) / 1000; last = now; const el = now - t0;
-    let lv; if (mic) { lv = mic.level(); if (el < 1200) { calib.push(lv); base = calib.reduce((a, b) => a + b, 0) / calib.length; } } else lv = Math.min(1, takeTaps() * 0.22 + loud * 0.6);
-    loud = lv; const thr = mic ? Math.max(0.3, base + 0.16) : 0.2, shouting = el > 1200 && lv > thr; // first 1.2s is a free grace + noise calibration
+    // Mic mode: only a LOUD, RHYTHMIC chant counts (VAS-TA GYA-NU HAI-YA = bursts with dips). Normal talking, a single "hi" or a steady loud hum won't move him.
+    let lv, chanting = true, thr = 0.2;
+    if (mic) {
+      lv = mic.level(); const raw = mic.raw();
+      if (el < 1200) { calib.push(lv); base = calib.reduce((a, b) => a + b, 0) / calib.length; }
+      thr = Math.min(0.85, Math.max(0.55, base + 0.3));
+      const isLoud = raw > thr; if (isLoud && !wasLoud) peaks.push(now); wasLoud = isLoud;
+      while (peaks.length && now - peaks[0] > 1700) peaks.shift();
+      if (peaks.length >= 3) chantUntil = now + 900;
+      chanting = now < chantUntil;
+    } else lv = Math.min(1, takeTaps() * 0.22 + loud * 0.6);
+    loud = lv; const shouting = el > 1200 && chanting && (mic ? lv > thr * 0.8 : lv > thr); // first 1.2s is a free grace + noise calibration
     const prog = el / DUR, creep = 0.1 + prog * 0.13; // he gets hungrier as time runs out
     dist = Math.max(0, Math.min(1, dist + (shouting ? 0.3 * Math.min(1, (lv - thr) / 0.25 + 0.4) * dt : -creep * dt)));
-    g.style.top = `calc(${(1 - dist) * 100}% * 0.82 + 4px)`; g.classList.toggle('run', shouting); L.style.height = Math.round(lv * 100) + '%'; L.classList.toggle('hot', shouting);
+    g.style.top = `calc(${(1 - dist) * 100}% * 0.82 + 4px)`; g.classList.toggle('run', shouting); L.style.height = Math.round((shouting || !mic ? lv : lv * 0.3) * 100) + '%'; L.classList.toggle('hot', shouting);
     C.classList.toggle('on', shouting);
     if (shouting) safeMs += dt * 1000;
     if (Math.floor(el / 900) !== msgI) { msgI = Math.floor(el / 900); msg.textContent = el < 1200 ? SHOUT.mic : pick(shouting ? SHOUT.ok : SHOUT.low); }

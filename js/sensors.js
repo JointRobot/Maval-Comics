@@ -10,15 +10,15 @@ export async function micMeter() {
   const src = ac.createMediaStreamSource(stream), an = ac.createAnalyser();
   an.fftSize = 1024; src.connect(an);
   const buf = new Float32Array(an.fftSize);
-  let level = 0;
+  let level = 0, raw = 0;
   const id = setInterval(() => {
     an.getFloatTimeDomainData(buf);
     let s = 0; for (const v of buf) s += v * v;
     const db = 20 * Math.log10(Math.sqrt(s / buf.length) + 1e-9);
-    const now = clamp((db + 48) / 36);
+    const now = clamp((db + 48) / 36); raw = now;
     level = now > level ? now : level * 0.9 + now * 0.1; // fast attack, slow release
   }, 60);
-  return { level: () => level, stop() { clearInterval(id); stream.getTracks().forEach(t => t.stop()); ac.close(); } };
+  return { level: () => level, raw: () => raw, stop() { clearInterval(id); stream.getTracks().forEach(t => t.stop()); ac.close(); } };
 }
 
 // Shake / stillness from the accelerometer. mode 'shake' → 0..1 energy, 'still' → 1 when motionless.
