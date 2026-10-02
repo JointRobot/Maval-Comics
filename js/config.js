@@ -34,13 +34,13 @@ export const CONFIG = {
 // The event ground, as zones on the isometric map. Plan metres: x east, y south.
 // Hero zone (Main Stage) sits at the bottom of the screen (south-east), backdrops at the top.
 export const ZONES = [
-  { id: 'gate',   name: 'Main Gate',     short: 'GATE',   x: 4,  y: 30, w: 8,  h: 8 },
-  { id: 'chai',   name: 'Chai Corner',   short: 'CHAI',   x: 4,  y: 4,  w: 9,  h: 9 },
-  { id: 'banyan', name: 'Banyan Lawn',   short: 'LAWN',   x: 17, y: 4,  w: 11, h: 10 },
-  { id: 'art',    name: 'Art Wall',      short: 'ART',    x: 32, y: 4,  w: 8,  h: 9 },
-  { id: 'food',   name: 'Food Gali',     short: 'FOOD',   x: 16, y: 18, w: 8,  h: 18 },
-  { id: 'games',  name: 'Games Alley',   short: 'GAMES',  x: 30, y: 17, w: 10, h: 9 },
-  { id: 'stage',  name: 'Main Stage',    short: 'STAGE',  x: 29, y: 29, w: 13, h: 12 }
+  { id: 'gate',   name: 'Azaadi Gate',    short: 'AZAADI',   x: 4,  y: 30, w: 8,  h: 8 },
+  { id: 'chai',   name: 'Baddies Chai Adda', short: 'BADDIES',   x: 4,  y: 4,  w: 9,  h: 9 },
+  { id: 'banyan', name: 'Touch Grass Lawn', short: 'GRASS',   x: 17, y: 4,  w: 11, h: 10 },
+  { id: 'art',    name: 'Meme Magic Wall', short: 'MEMES',    x: 32, y: 4,  w: 8,  h: 9 },
+  { id: 'food',   name: 'Vada Pav Vidroh', short: 'VADA',   x: 16, y: 18, w: 8,  h: 18 },
+  { id: 'games',  name: 'Jugaad Alley',    short: 'JUGAAD',  x: 30, y: 17, w: 10, h: 9 },
+  { id: 'stage',  name: 'Awaaz Stage',     short: 'AWAAZ',  x: 29, y: 29, w: 13, h: 12 }
 ];
 export const MAP = { w: 44, h: 44 };
 
