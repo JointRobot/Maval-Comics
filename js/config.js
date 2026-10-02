@@ -26,7 +26,7 @@ export const CONFIG = {
   eventName: 'GYANU HUNT',
   credit: 'Created by Maval Comics',
   version: '0.3',
-  edition: 'VASTA GYANU HAIYA',
+  edition: 'COCKROACH EDITION',
   pollMs: 6000,           // how often the leaderboard + hunt state refresh (Supabase mode)
   photoRetentionHours: 24 // thumbnails are wiped after this (control room can wipe sooner)
 };
