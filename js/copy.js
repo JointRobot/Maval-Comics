@@ -219,8 +219,8 @@ export const ROAM = {
 
 // ---- Shout-off: keep yelling the chant and Gyanu runs from the dot. Go quiet and he sprints at it.
 export const SHOUT = {
-  chant: 'HIYA VASHTAKONA!', chantAlt: ['HIYA VASHTAKONA', 'VASHTAKONA HIYA', 'HIYA HIYA VASHTAKONA'],
-  title: 'HIYA VASHTAKONA!', sub: 'Keep shouting the chant and Gyanu runs away from the dot. Go quiet and he sprints at it. Survive 30 seconds and you win. Mic only hears loudness, nothing is recorded.',
+  chant: 'VASTA GYANU HAIYA!', chantAlt: ['VASTA GYANU HAIYA', 'HAIYA VASTA GYANU', 'GYANU HAIYA HAIYA'],
+  title: 'VASTA GYANU HAIYA', sub: 'Keep shouting the chant and Gyanu runs away from the dot. Go quiet and he sprints at it. Survive 30 seconds and you win. Mic only hears loudness, nothing is recorded.',
   start: 'START SHOUTING', mic: 'Allow the mic when your phone asks. Loud and proud!',
   noMic: 'No mic? No problem. Mash the SHOUT button instead.', go: 'SHOUT!!',
   low: ['LOUDER, BESTIE', 'HE IS COMING 😭', 'DON’T GO QUIET', 'KEEP YELLING', 'SHOUT OR LOSE'], ok: ['HE IS RUNNING!', 'W CHANT', 'KEEP IT UP', 'SCREAM IT', 'GYANU IS SCARED'],

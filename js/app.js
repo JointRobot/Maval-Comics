@@ -138,7 +138,7 @@ function suggestions() {
   if (!roamPins().some(r => r.mine) && (me.dropsLeft ?? 0) > 0) L.push({ t: '🎁 Hide YOUR Gyanu for others. You earn +10 per catch', go: () => openRoamDrop() });
   if (Date.now() - (me.lastSubmitAt || 0) > 0 && !F && !R.length) L.push({ t: '🔨 Quiet right now. Whack a Gyanu while the next one spawns', go: startWhack });
   L.push({ t: me.callsLeft > 0 ? '📣 Call the crowd and see how many phones you move' : '📍 Spotted water or food? Pin it on The Scene for points', go: me.callsLeft > 0 ? openCall : () => go('scene') });
-  L.push({ t: '🗣️ Shout-off: yell HIYA VASHTAKONA, keep Gyanu off the dot', go: startShout });
+  L.push({ t: '🗣️ Vasta Gyanu Haiya: keep shouting, keep Gyanu off the dot', go: startShout });
   L.push({ t: '🥊 Waiting for a spawn? Punch it out for the leaderboard', go: startPunch });
   return L.slice(0, 5);
 }
@@ -238,7 +238,7 @@ function renderSheet() {
   const open = openHunts(), roams = roamPins();
   if (!open.length && !roams.length) {
     el.innerHTML = `<div class="panel"><h3>${esc(T.noHunts)}</h3><p class="muted" style="margin:6px 0 10px">${esc(T.noHuntsSub)}</p>
-      <div class="row"><button class="btn teal" id="wBtn" style="font-size:14px">🔨 WHACK</button><button class="btn teal" id="pBtn" style="font-size:14px">🥊 PUNCH</button><button class="btn pink" id="cBtn" style="font-size:14px">📣 CALL</button></div><div class="row" style="margin-top:8px"><button class="btn ghost" id="dropBtn">🎁 PLANT</button><button class="btn ghost" id="shBtn">🗣️ SHOUT-OFF</button></div></div>`;
+      <div class="row"><button class="btn teal" id="wBtn" style="font-size:14px">🔨 WHACK</button><button class="btn teal" id="pBtn" style="font-size:14px">🥊 PUNCH</button><button class="btn pink" id="cBtn" style="font-size:14px">📣 CALL</button></div><div class="row" style="margin-top:8px"><button class="btn ghost" id="dropBtn">🎁 PLANT</button><button class="btn ghost" id="shBtn">🗣️ VASTA GYANU HAIYA</button></div></div>`;
     $('#shBtn').onclick = startShout; $('#dropBtn').onclick = () => openRoamDrop(); $('#wBtn').onclick = startWhack; $('#pBtn').onclick = startPunch; $('#cBtn').onclick = openCall;
     return;
   }
@@ -257,7 +257,7 @@ function renderSheet() {
       ${r.mine ? `<p class="small" style="margin:6px 0 10px;font-weight:700">${esc(ROAM.mineNote)}</p>` : r.got ? `<p class="small" style="margin:6px 0 10px;font-weight:700">${esc(ROAM.gotNote)}</p>` : `<p class="small" style="margin:6px 0 10px;font-weight:700">${esc(ROAM.nextPts(pts, ord + 1))}</p>`}
       <button class="btn pink" id="catchBtn" ${r.mine || r.got ? 'disabled' : ''}>${r.mine ? '🎁 YOURS · WAITING FOR CATCHERS' : r.got ? '✅ CAUGHT' : '🖐️ SLAP HIM'}</button>
       <div class="row" style="margin-top:8px"><button class="btn teal" id="dropBtn" style="min-height:46px;font-size:13px">🎁 PLANT · ${st.me.dropsLeft ?? 0}</button><button class="btn teal" id="wBtn" style="min-height:46px;font-size:14px">🔨 WHACK</button><button class="btn teal" id="pBtn" style="min-height:46px;font-size:14px">🥊 PUNCH</button></div>
-      <button class="btn ghost" id="shBtn" style="margin-top:8px;min-height:42px;font-size:13px">🗣️ SHOUT-OFF · HIYA VASHTAKONA</button>
+      <button class="btn ghost" id="shBtn" style="margin-top:8px;min-height:42px;font-size:13px">🗣️ VASTA GYANU HAIYA</button>
     </div>`;
     $('#shBtn').onclick = startShout;
     el.querySelectorAll('[data-h]').forEach(b => (b.onclick = () => { selHunt = b.dataset.h; renderSheet(); }));
@@ -276,7 +276,7 @@ function renderSheet() {
     <p class="small muted" style="margin:2px 0 10px">${h.pending ? '⏳ ' + esc(T.pending) : esc(T.tries(triesLeft))} · ${esc(T.safetyShort)}</p>
     <button class="btn pink" id="scanBtn" ${h.pending || triesLeft <= 0 ? 'disabled' : ''}>📸 ${esc(T.scan)}</button>
     <div class="row" style="margin-top:8px"><button class="btn teal" id="wBtn" style="min-height:46px;font-size:14px">🔨 WHACK</button><button class="btn teal" id="pBtn" style="min-height:46px;font-size:14px">🥊 PUNCH</button><button class="btn pink" id="cBtn" style="min-height:46px;font-size:14px">📣 CALL</button></div>
-    <div class="row" style="margin-top:8px"><button class="btn ghost" id="dropBtn" style="min-height:42px;font-size:13px">🎁 PLANT · ${st.me.dropsLeft ?? 0} left</button><button class="btn ghost" id="shBtn" style="min-height:42px;font-size:13px">🗣️ SHOUT-OFF</button></div>
+    <div class="row" style="margin-top:8px"><button class="btn ghost" id="dropBtn" style="min-height:42px;font-size:13px">🎁 PLANT · ${st.me.dropsLeft ?? 0} left</button><button class="btn ghost" id="shBtn" style="min-height:42px;font-size:13px">🗣️ VASTA GYANU HAIYA</button></div>
   </div>`;
   el.querySelectorAll('[data-h]').forEach(b => (b.onclick = () => { selHunt = b.dataset.h; renderSheet(); }));
   $('#shBtn').onclick = startShout; $('#dropBtn').onclick = () => openRoamDrop(); $('#scanBtn').onclick = () => scan(h); $('#wBtn').onclick = startWhack; $('#pBtn').onclick = startPunch; $('#cBtn').onclick = openCall;
