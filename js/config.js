@@ -4,10 +4,10 @@ export const CONFIG = {
   // 'local' = zero-setup demo: everything lives in this browser (localStorage) and syncs
   //           between tabs on the same device. Perfect for rehearsals and testing.
   // 'supabase' = real multi-player event. Fill in url + anonKey below and run supabase/schema.sql.
-  backend: 'local',
+  backend: 'supabase',
   supabase: {
-    url: '',        // e.g. https://abcd1234.supabase.co
-    anonKey: ''     // the project's public anon key (safe to ship; RLS + RPCs guard the data)
+    url: 'https://pczgqovzwwzctzaircek.supabase.co',
+    anonKey: 'sb_publishable_LoHIwEJJtu3YoN1d_TPwqg_0JvzyrOP'     // the project's public anon key (safe to ship; RLS + RPCs guard the data)
   },
 
   // Phone OTP: 'off' (recommended for the MVP — see README §3), 'demo' (simulated code on screen),

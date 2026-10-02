@@ -545,7 +545,7 @@ export class SupabaseBackend {
   async rpc(fn, body, bearer) {
     const r = await fetch(`${this.url}/rest/v1/rpc/${fn}`, {
       method: 'POST',
-      headers: { apikey: this.key, Authorization: `Bearer ${bearer || this.key}`, 'content-type': 'application/json' },
+      headers: { apikey: this.key, ...((bearer || this.key.startsWith('eyJ')) ? { Authorization: `Bearer ${bearer || this.key}` } : {}), 'content-type': 'application/json' }, // new-style sb_publishable_ keys go in apikey only
       body: JSON.stringify(body || {})
     });
     const j = await r.json().catch(() => null);

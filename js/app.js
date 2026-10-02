@@ -830,6 +830,8 @@ function openBuyCalls() {
 
 // ---------------------------------------------------------------- boot
 function boot() {
+  // Demo-mode identities (stored on the phone before the shared server existed) don't exist on the server: start those phones fresh.
+  try { if (backend.kind === 'supabase' && localStorage.getItem('gh_backend') !== 'supabase') { localStorage.removeItem('gh_me_v1'); localStorage.setItem('gh_backend', 'supabase'); } } catch {}
   ensureSprite();
   fillStatic();
   const back = !!backend.meId(); // returning players still see the start screen, and tap to continue (it used to flash past)
