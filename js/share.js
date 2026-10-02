@@ -4,7 +4,7 @@ import { CONFIG } from './config.js';
 const loadImg = src => new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = src; });
 
 const gameUrl = () => { try { return new URL('./', location.href).href; } catch { return location.href; } };
-export async function makeCard({ nick, slogan, finds, score, rank, homeBest }) {
+export async function makeCard({ nick, slogan, finds, score, rank, homeBest, game }) {
   await document.fonts?.load('80px Bungee').catch(() => {});
   const W = 1080, H = 1350, c = document.createElement('canvas');
   c.width = W; c.height = H;
@@ -21,12 +21,13 @@ export async function makeCard({ nick, slogan, finds, score, rank, homeBest }) {
     x.fillStyle = '#15131A'; x.fillText(t, 10, 10); x.lineWidth = size / 9; x.strokeStyle = '#15131A'; x.strokeText(t, 0, 0); x.fillStyle = fill; x.fillText(t, 0, 0); x.restore();
   };
   x.font = F(34); x.fillStyle = '#15131A'; x.fillRect(60, 60, 470, 64); x.fillStyle = '#FFD400'; x.textAlign = 'left'; x.fillText(CONFIG.edition, 80, 106);
-  outlined('I FOUND GYANU', W / 2, 250, 112, '#FFD400', -0.05);
+  outlined(game ? game.head : 'I FOUND GYANU', W / 2, 250, game && game.head.length > 12 ? 84 : 112, '#FFD400', -0.05);
   const img = await loadImg('img/gyanu.svg');
   if (img) x.drawImage(img, W / 2 - 190, 300, 380, 393);
+  if (game) { outlined(game.big, W / 2, 800, 120, '#FF2E88', 0.03); outlined(game.sub, W / 2, 925, 66, '#FFFFFF', -0.02); } else {
   outlined(homeBest && !finds ? `BONKED ${homeBest}×` : `${finds} TIME${finds === 1 ? '' : 'S'}`, W / 2, 800, 120, '#FF2E88', 0.03);
   outlined(`${Number(score).toLocaleString('en-IN')} POINTS`, W / 2, 925, 84, '#FFFFFF', -0.02);
-  if (rank) outlined(`RANK #${rank}`, W / 2, 1015, 52, '#FFD400');
+  if (rank) outlined(`RANK #${rank}`, W / 2, 1015, 52, '#FFD400'); }
   if (slogan) { // placard
     x.save(); x.translate(W / 2, 1120); x.rotate(-0.03);
     x.font = 'bold 40px system-ui, sans-serif'; const tw = Math.min(900, x.measureText(slogan).width + 70);
@@ -43,7 +44,7 @@ export async function shareCard(data) {
   const blob = await makeCard(data);
   const file = new File([blob], 'gyanu-hunt.png', { type: 'image/png' });
   const url = gameUrl();
-  const text = `I found Gyanu ${data.finds} time${data.finds === 1 ? '' : 's'}: ${data.score} points. Can you spot him? Play: ${url} #GyanuHunt`; // the link rides in the text, because many apps drop a separate url field when a picture is attached
+  const text = data.game ? `${data.game.text} Can you beat it? Play: ${url} #GyanuHunt` : `I found Gyanu ${data.finds} time${data.finds === 1 ? '' : 's'}: ${data.score} points. Can you spot him? Play: ${url} #GyanuHunt`; // the link rides in the text, because many apps drop a separate url field when a picture is attached
   if (navigator.canShare?.({ files: [file] })) { try { await navigator.share({ files: [file], text, title: 'Gyanu Hunt', url }); return 'shared'; } catch (e) { if (e?.name === 'AbortError') return 'cancelled'; try { await navigator.share({ files: [file], text }); return 'shared'; } catch { return 'cancelled'; } } }
   try { await navigator.clipboard?.writeText(text); } catch {}
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'gyanu-hunt.png'; a.click();

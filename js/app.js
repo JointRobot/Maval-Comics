@@ -113,7 +113,7 @@ async function doJoin() {
     }
     await backend.register(n.nick, sl.slogan);
     play('level'); await enterGame();
-    if (wantHome) startWhack(); else entryStart(true);
+    if (wantHome) startWhack(); else firstRun();
   } catch (e) { $('#joinErr').textContent = e.message; }
   $('#joinGo').disabled = false;
 }
@@ -523,6 +523,11 @@ async function showEnd() {
   o.querySelector('#closeEnd').onclick = () => o.remove();
 }
 
+async function shareScore(game) {
+  const me = st.me;
+  const r = await shareCard({ nick: me.nick, slogan: me.slogan, game });
+  if (r === 'downloaded') toast('Card saved. Caption + game link copied: paste both when you post.', 4500);
+}
 async function doShare(rank) {
   const me = st.me;
   if (!rank) rank = (await backend.leaderboard('global')).mine?.rank;
@@ -870,7 +875,8 @@ function runWhack(entry) {
     confetti(score > 10 ? 70 : 20); play(score > 10 ? 'tada' : 'bruh');
     const o = layer(`<h2 class="big">${score} BONKS</h2><p class="d" style="font-size:20px;color:var(--pink);margin:10px 0">${esc(T.homeDone(score))}</p>
       ${r.ok ? `<p>${r.best ? '🏆 NEW PERSONAL BEST' : esc(T.homeBest(r.homeBest))}</p>` : `<p>${esc(r.reason)}</p>`}
-      <div class="sw stack" style="margin-top:16px"><button class="btn pink" id="wA">${esc(T.homeAgain)}</button><button class="btn ghost" style="color:var(--ink)" id="wB">LEADERBOARD</button><button class="link" style="color:#fff" id="wC">done</button></div>`, 'burst');
+      <div class="sw stack" style="margin-top:16px"><button class="btn pink" id="wA">${esc(T.homeAgain)}</button><button class="btn" id="wS">📤 SHARE SCORE</button><button class="btn ghost" style="color:var(--ink)" id="wB">LEADERBOARD</button><button class="link" style="color:#fff" id="wC">done</button></div>`, 'burst');
+    o.querySelector('#wS').onclick = () => shareScore({ head: 'WHACK-A-GYANU', big: `${score} BONKS`, sub: 'IN 30 SECONDS', text: `I bonked Gyanu ${score} times in 30 seconds.` });
     o.querySelector('#wA').onclick = () => { o.remove(); runWhack(); };
     o.querySelector('#wB').onclick = () => { o.remove(); scope = 'home'; go('score'); };
     o.querySelector('#wC').onclick = () => { o.remove(); refresh(); };
@@ -914,7 +920,8 @@ function runPunch() {
     confetti(n > 70 ? 70 : 20); play(n > 40 ? 'tada' : 'bruh');
     const d = layer(`<h2 class="big">${n} PUNCHES</h2><p class="d" style="font-size:20px;color:var(--pink);margin:10px 0">${esc(T.punchDone(n))}</p>
       ${r.ok ? `<p>${r.best ? '🏆 NEW PERSONAL BEST' : 'Your best: ' + r.punchBest}</p>` : `<p>${esc(r.reason)}</p>`}
-      <div class="sw stack" style="margin-top:16px"><button class="btn pink" id="pA">RUN IT BACK</button><button class="btn ghost" style="color:var(--ink)" id="pB">LEADERBOARD</button><button class="link" style="color:#fff" id="pC">back to the hunt</button></div>`);
+      <div class="sw stack" style="margin-top:16px"><button class="btn pink" id="pA">RUN IT BACK</button><button class="btn" id="pS">📤 SHARE SCORE</button><button class="btn ghost" style="color:var(--ink)" id="pB">LEADERBOARD</button><button class="link" style="color:#fff" id="pC">back to the hunt</button></div>`);
+    d.querySelector('#pS').onclick = () => shareScore({ head: 'PUNCHING BAG', big: `${n} PUNCHES`, sub: 'IN 60 SECONDS', text: `I threw ${n} punches at Gyanu in 60 seconds.` });
     d.querySelector('#pA').onclick = () => { d.remove(); runPunch(); };
     d.querySelector('#pB').onclick = () => { d.remove(); scope = 'punch'; go('score'); };
     d.querySelector('#pC').onclick = () => { d.remove(); refresh(); };
@@ -975,7 +982,8 @@ function runShout(mic, takeTaps, addTap) {
     const d = layer(`<img class="mascot" src="img/gyanu.svg" alt=""><h2 class="big" style="margin-top:8px">${esc(win ? SHOUT.win : SHOUT.lose)}</h2>
       <p style="margin:10px 0">${esc(win ? SHOUT.winSub : SHOUT.loseSub)}</p><p class="d" style="font-size:20px;color:var(--pink);margin:6px 0">${esc(SHOUT.done(secs))}</p>
       <p class="small">${secs}s of shouting · best ${best}s</p>
-      <div class="sw stack" style="margin-top:16px"><button class="btn pink" id="sA">${esc(SHOUT.again)}</button><button class="link" style="color:#fff" id="sB">back to the hunt</button></div>`, win ? 'burst' : '');
+      <div class="sw stack" style="margin-top:16px"><button class="btn pink" id="sA">${esc(SHOUT.again)}</button><button class="btn" id="sS">📤 SHARE SCORE</button><button class="link" style="color:#fff" id="sB">back to the hunt</button></div>`, win ? 'burst' : '');
+    d.querySelector('#sS').onclick = () => shareScore({ head: 'VASTA GYANU HAIYA', big: `${secs}s LOUD`, sub: win ? 'GYANU STAYED AWAY' : 'KEEP SHOUTING', text: `I chanted VASTA GYANU HAIYA for ${secs}s.` });
     d.querySelector('#sA').onclick = () => { d.remove(); startShout(); };
     d.querySelector('#sB').onclick = () => { d.remove(); refresh(); };
   };
@@ -1047,7 +1055,7 @@ function boot() {
   fillStatic();
   const back = !!backend.meId(); // returning players still see the start screen, and tap to continue (it used to flash past)
   if (back) $('#playBtn').textContent = 'CONTINUE THE HUNT';
-  $('#playBtn').onclick = async () => { if (back) { await enterGame(); entryStart(false); } else showJoin(false); };
+  $('#playBtn').onclick = () => (back ? enterGame() : showJoin(false));
   $('#status').addEventListener('click', e => { if (e.target.closest('[data-crowd]')) openCrowd(); else if (e.target.closest('[data-call]')) openCall(); });
   landingCrowd();
   $('#introBtn').onclick = () => runTour(INTRO, { autoChoice: true, doneLabel: 'LET’S PLAY' });
