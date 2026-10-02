@@ -546,6 +546,7 @@ export class IsoMap {
         if (h.kind === 'player') { ctx.font = `${sz * 0.34}px sans-serif`; ctx.textAlign = 'center'; ctx.fillText('🎁', mx - sz * 0.5, my - sz * 0.45); }
         if (h.kind === 'golden') { ctx.font = `${sz * 0.34}px sans-serif`; ctx.textAlign = 'center'; ctx.fillText('✨', mx - sz * 0.5, my - sz * 0.45); }
       }
+      if (!h.roam && h.endsAt) { const fr = Math.max(0, Math.min(1, (h.endsAt - (this.nowFn ? this.nowFn() : Date.now())) / (h.span || 300000))); ctx.beginPath(); ctx.arc(mx, my, sz * 0.7, -Math.PI / 2, -Math.PI / 2 + fr * 6.283); ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke(); }
       if (h.found) { ctx.fillStyle = '#fff'; ctx.font = `${sz * 0.42}px Bungee, Impact, sans-serif`; ctx.textAlign = 'center'; ctx.fillText('✓', mx + sz * 0.45, my - sz * 0.35); }
       if (this.selected === h.id && !h.found) { // the pin to go for: pulsing white halo + a name tag, so it can't be missed
         const k2 = (Math.sin(t * 5) + 1) / 2;

@@ -168,7 +168,7 @@ async function enterGame() {
     new ResizeObserver(() => map.refit()).observe($('#sheet')); new ResizeObserver(() => map.refit()).observe($('#status'));
     $('#zin').onclick = () => map.zoomBy(1.4); $('#zout').onclick = () => map.zoomBy(1 / 1.4);
   }
-  map.start(); window.gyanuMap = map; // handy for testing from the console
+  map.nowFn = serverNow; map.start(); window.gyanuMap = map; // handy for testing from the console
   await refresh();
 }
 
@@ -214,11 +214,17 @@ function renderStatus(offline) {
   $('#status').innerHTML = chips.join('');
 }
 
+// Printed Gyanus come and go too: each fixed spot is "on" for 5 min of every 8, staggered, so the map keeps changing (the same for everyone: it runs off server time).
+const CL = { period: 8 * 60e3, on: 5 * 60e3 };
+const clPhase = h => { let x = 0; for (const c of String(h.id)) x = (x * 31 + c.charCodeAt(0)) >>> 0; return (serverNow() + (x % CL.period)) % CL.period; };
+const classicLive = h => h.type !== 'classic' || clPhase(h) < CL.on;
+const liveHunts = () => { const a = (st?.hunts || []).filter(h => !h.found), l = a.filter(classicLive); return l.length || !a.length ? l : a.slice(0, 1); };
+const classicEnds = h => (h.type === 'classic' ? serverNow() + (CL.on - clPhase(h)) : 0);
 const roamPins = () => (st?.roamers || []).map(r => ({ ...r, roam: true, type: 'roam', found: false, kind: r.kind }));
-const pins = () => (st?.hunts || []).concat(roamPins());
+const pins = () => liveHunts().map(h => (h.type === 'classic' ? { ...h, endsAt: classicEnds(h), span: CL.on } : h)).concat(roamPins());
 const sname = id => ZONES.find(z => z.id === id)?.short || id;
 const mmss = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
-const openHunts = () => (st?.hunts || []).filter(h => !h.found).sort((a, b) => ({ final: 0, golden: 1, classic: 2 }[a.type] - { final: 0, golden: 1, classic: 2 }[b.type]));
+const openHunts = () => liveHunts().sort((a, b) => ({ final: 0, golden: 1, classic: 2 }[a.type] - { final: 0, golden: 1, classic: 2 }[b.type]));
 
 function speedLine(h) {
   const secs = (serverNow() - h.activatedAt) / 1000;
@@ -291,6 +297,8 @@ setInterval(() => { // live speed-bonus countdown without hitting the server
   const rc = $('#roamClock'), r = st?.roamers?.find(x => x.id === selHunt); if (rc && r) { rc.textContent = mmss(r.endsAt - serverNow()); if (r.endsAt < serverNow() - 1500) refresh(); }
   coolTick();
 }, 1000);
+let liveSig = '';
+setInterval(() => { if (!st || whack) return; const sig = liveHunts().map(h => h.id).join(','); if (sig !== liveSig) { const first = liveSig === ''; liveSig = sig; if (!first) { renderSheet(); map?.setState({ hunts: pins() }); paintCoach(false); } } }, 1000);
 setInterval(() => paintCoach(true), 7000);
 
 // ---------------------------------------------------------------- camera + submit
