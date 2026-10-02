@@ -299,7 +299,7 @@ export class IsoMap {
   rebuild() {
     const S = this.S, d = this.dpr;
     // ground: capped at ~4 MP so budget phones never allocate a giant canvas
-    const ext = { x0: -14, y0: -16, x1: MAP.w + 2, y1: MAP.h + 2 };
+    const ext = { x0: -14, y0: -16, x1: MAP.w + 11, y1: MAP.h + 6 };
     const corners = [[ext.x0, ext.y0, 30], [ext.x1, ext.y0, 30], [ext.x0, ext.y1, 0], [ext.x1, ext.y1, 0], [ext.x0, ext.y0, 0], [ext.x1, ext.y1, 0]];
     const sp = (x, y, z) => [(x - y) * C, (x + y) * 0.5 - z];
     const xs = corners.map(c => sp(...c)[0]), ys = corners.map(c => sp(...c)[1]);
@@ -329,11 +329,22 @@ export class IsoMap {
     g.flat(-14, -16, 13.5, MAP.h + 18, COL.sea);
     ctx.strokeStyle = COL.sea2; ctx.lineWidth = Math.max(1, g.S * 0.12);
     for (let i = 0; i < 22; i++) { const x = -12 + (i % 5) * 2.4, y = -12 + i * 2.6; const [a, b] = g.P(x, y), [c, d] = g.P(x + 1.2, y + 0.2); ctx.beginPath(); ctx.moveTo(a, b); ctx.quadraticCurveTo((a + c) / 2, b - g.S * 0.4, c, d); ctx.stroke(); }
-    // promenade + rail track north
-    g.flat(-0.5, -16, MAP.w + 2.5, 15.6, '#B9A58A');
-    g.flat(-0.5, -4, MAP.w + 2.5, 2, '#8E8170');
+    // Shivaji Park, Dadar (from the satellite view): sea + Dadar Chowpatty on the WEST, a wide road between the sea and the ground,
+    // Keluskar Rd N along the NORTH and EAST sides, Ranade Rd on the SOUTH, and the Western Railway line further EAST.
+    const asphalt = '#6F6A72', kerb = '#B9A58A', dash = (x0, y0, x1, y1) => { ctx.strokeStyle = '#F4E9C8'; ctx.lineWidth = Math.max(1, g.S * 0.12); ctx.setLineDash([g.S * 0.9, g.S * 0.9]); const [a, b] = g.P(x0, y0), [c, d] = g.P(x1, y1); ctx.beginPath(); ctx.moveTo(a, b); ctx.lineTo(c, d); ctx.stroke(); ctx.setLineDash([]); };
+    const word = (txt, x, y, dir, size, col) => { const [a, b] = g.P(0, 0); ctx.save(); ctx.transform(C * g.S, 0.5 * g.S, -C * g.S, 0.5 * g.S, a, b); if (dir === 'y') ctx.transform(0, -1, 1, 0, 0, 0); ctx.fillStyle = col; ctx.font = `bold ${size}px Bungee, Impact, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(txt, x, y); ctx.restore(); };
+    g.flat(-0.5, -16, MAP.w + 12, 15.6, kerb);                              // back lots behind the north road
+    g.flat(-6, -5.5, MAP.w + 6.5, 5, asphalt); dash(-6, -3, MAP.w + 1, -3);   // north road
+    g.flat(-6.2, -5.5, 5.4, MAP.h + 12, asphalt); dash(-3.5, -5, -3.5, MAP.h + 5); // west road, between the sea and the ground
+    g.flat(MAP.w + 0.5, -5.5, 4.2, MAP.h + 12, asphalt); dash(MAP.w + 2.6, -5, MAP.w + 2.6, MAP.h + 5); // east road
+    g.flat(-6, MAP.h + 0.5, MAP.w + 11, 4, asphalt); dash(-5, MAP.h + 2.5, MAP.w + 4, MAP.h + 2.5); // south road
+    g.flat(MAP.w + 4.7, -16, 5.5, MAP.h + 24, kerb);                         // rail corridor, east
+    g.flat(MAP.w + 5.8, -16, 3.4, MAP.h + 24, '#8E8170');
     ctx.strokeStyle = '#5B5146'; ctx.lineWidth = Math.max(1, g.S * 0.1);
-    for (const ry of [-3.6, -2.4]) { const [a, b] = g.P(-0.5, ry), [c, d] = g.P(MAP.w + 2, ry); ctx.beginPath(); ctx.moveTo(a, b); ctx.lineTo(c, d); ctx.stroke(); }
+    for (const rx of [MAP.w + 6.6, MAP.w + 8.2]) { const [a, b] = g.P(rx, -16), [c, d] = g.P(rx, MAP.h + 8); ctx.beginPath(); ctx.moveTo(a, b); ctx.lineTo(c, d); ctx.stroke(); }
+    word('KELUSKAR RD N', 22, -3, 'x', 1.5, '#F4E9C8'); word('KELUSKAR RD N', MAP.w + 2.6, 22, 'y', 1.5, '#F4E9C8'); word('RANADE RD', 22, MAP.h + 2.5, 'x', 1.5, '#F4E9C8');
+    word('WESTERN RAILWAY', MAP.w + 7.4, 22, 'y', 1.2, '#F4E9C8');
+    word('ARABIAN SEA', -9, 22, 'y', 2.2, 'rgba(255,255,255,.75)'); word('DADAR CHOWPATTY', -9, 40, 'y', 1.2, 'rgba(255,255,255,.7)');
     // skyline (back, north): dusk towers with lit windows
     const r2 = (s => () => (s = (s * 48271) % 2147483647) / 2147483647)(7);
     for (let x = -1; x < MAP.w + 1; x += 3.4 + r2() * 1.6) {
@@ -424,18 +435,17 @@ export class IsoMap {
     this.drawPops(ctx, P, S, t);
   }
 
-  drawTrain(ctx, P, S, t) {
-    const L = 5.2, cars = 5, span = MAP.w + 30, head = ((t * 6) % span) - 12;
+  drawTrain(ctx, P, S, t) { // Western Railway: runs north to south on the east side of the park
+    const L = 5.2, cars = 5, span = MAP.h + 34, head = ((t * 6) % span) - 14;
     ctx.lineWidth = Math.max(1, S * 0.1); ctx.strokeStyle = INK;
+    const x = MAP.w + 6.0, w = 1.6, z = 2.2;
     for (let i = 0; i < cars; i++) {
-      const x0 = head - i * (L + 0.3); if (x0 < -0.5 || x0 + L > MAP.w + 2) continue;
-      const y = -3.8, h = 1.6, z = 2.2;
+      const y0 = head - i * (L + 0.3); if (y0 < -14 || y0 + L > MAP.h + 8) continue;
       const q = (pts, f) => { ctx.beginPath(); pts.forEach((p, j) => { const [a, b] = P(...p); j ? ctx.lineTo(a, b) : ctx.moveTo(a, b); }); ctx.closePath(); ctx.fillStyle = f; ctx.fill(); ctx.stroke(); };
-      q([[x0, y + h, 0.3], [x0 + L, y + h, 0.3], [x0 + L, y + h, z], [x0, y + h, z]], '#E9E2D2');
-      q([[x0 + L, y, 0.3], [x0 + L, y + h, 0.3], [x0 + L, y + h, z], [x0 + L, y, z]], '#B9B0A0');
-      q([[x0, y, z], [x0 + L, y, z], [x0 + L, y + h, z], [x0, y + h, z]], '#9C2F3B');
-      ctx.fillStyle = '#7A1F2B';
-      q([[x0, y + h, 0.9], [x0 + L, y + h, 0.9], [x0 + L, y + h, 1.25], [x0, y + h, 1.25]], '#7A1F2B');
+      q([[x + w, y0, 0.3], [x + w, y0 + L, 0.3], [x + w, y0 + L, z], [x + w, y0, z]], '#E9E2D2');
+      q([[x, y0 + L, 0.3], [x + w, y0 + L, 0.3], [x + w, y0 + L, z], [x, y0 + L, z]], '#B9B0A0');
+      q([[x, y0, z], [x + w, y0, z], [x + w, y0 + L, z], [x, y0 + L, z]], '#9C2F3B');
+      q([[x + w, y0, 0.9], [x + w, y0 + L, 0.9], [x + w, y0 + L, 1.25], [x + w, y0, 1.25]], '#7A1F2B');
     }
   }
 
