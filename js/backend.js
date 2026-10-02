@@ -10,6 +10,16 @@ import { RULES, scoreFind } from './rules.js';
 import { hamming } from './verify.js';
 import { SLOGANS, CHANTS, CALL_KINDS } from './copy.js';
 const PRESETS = new Set([...SLOGANS, ...CHANTS]);
+// Calls: earned by helping the crowd (every 3 helps = 1 call, max 5) or bought with points (≈55% of them, min 60, max 3).
+export const callCost = score => Math.max(RULES.callBuyMin, Math.ceil((score || 0) * RULES.callBuyShare));
+function addHelp(me) {
+  if ((me.earnedCalls || 0) >= RULES.callEarnCap) return;
+  me.helps = (me.helps || 0) + 1;
+  if (me.helps >= RULES.callHelpsPer) {
+    me.helps -= RULES.callHelpsPer; me.earnedCalls = (me.earnedCalls || 0) + 1; me.callBonus = (me.callBonus || 0) + 1;
+    me.notices = [...(me.notices || []), { id: uid('n_'), kind: 'callsearned', calls: 1 }];
+  }
+}
 
 const uid = (p = '') => p + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4);
 const now = () => Date.now();
@@ -165,7 +175,8 @@ export class LocalBackend {
       me: me && {
         id: me.id, nick: me.nick, slogan: me.slogan, avatar: me.avatar, score: me.score, finds: me.finds, streak: me.streak, bestStreak: me.bestStreak,
         banned: me.banned, rank: (board.findIndex(r => r.id === me.id) + 1) || null, players: board.length,
-        lastSubmitAt: me.lastSubmitAt, notices: me.notices || [], homeBest: me.homeBest || 0, punchBest: me.punchBest || 0, callsLeft: Math.max(0, RULES.callsPerPlayer + (me.callBonus || 0) - (me.calls || 0)), pendingCalls: (db.callReqs || []).filter(q => q.playerId === me.id && q.status === 'new').length
+        lastSubmitAt: me.lastSubmitAt, notices: me.notices || [], homeBest: me.homeBest || 0, punchBest: me.punchBest || 0, callsLeft: Math.max(0, RULES.callsPerPlayer + (me.callBonus || 0) - (me.calls || 0)), pendingCalls: (db.callReqs || []).filter(q => q.playerId === me.id && q.status === 'new').length,
+        callCost: callCost(me.score), helps: me.helps || 0, earnedCalls: me.earnedCalls || 0, boughtCalls: me.boughtCalls || 0
       }
     };
   }
@@ -270,7 +281,7 @@ export class LocalBackend {
     if (me.banned) return no('Your account is paused.');
     if (db.settings.paused || db.settings.ended) return no('Calls are paused right now.');
     if (!['chant', 'shake', 'statue', 'lights'].includes(kind)) return no('Pick a move first.');
-    if ((me.calls || 0) >= RULES.callsPerPlayer + (me.callBonus || 0)) return no(CONFIG.pay?.rupees ? 'All your calls are used. Tap NEED MORE CALLS, or join the others now 🪳' : 'All your calls are used. Join the others now 🪳');
+    if ((me.calls || 0) >= RULES.callsPerPlayer + (me.callBonus || 0)) return no('All your calls are used. Tap NEED MORE CALLS, or join the others now 🪳');
     if (now() - (me.lastCallAt || 0) < RULES.callCooldownSec * 1000) return no('Easy, caller. Wait a minute before your next one.');
     const live = db.settings.hype;
     if (live && !live.done && now() < live.endsAt) return no('A moment is already live. Go join it!');
@@ -285,7 +296,16 @@ export class LocalBackend {
     return { ok: true, left: RULES.callsPerPlayer + (me.callBonus || 0) - me.calls };
   }
 
-  // ---------- paid extra calls: player pays by UPI QR, enters the last 4 of the reference, crew approves
+  async buyCall() {
+    const db = this.load(); const me = this.me(db); if (!me) throw new Error('Join first');
+    if (me.banned) return { ok: false, reason: 'Your account is paused.' };
+    if ((me.boughtCalls || 0) >= RULES.callBuyCap) return { ok: false, reason: 'You already bought 3 calls. Help the crowd to earn more.' };
+    const cost = callCost(me.score);
+    if (me.score < cost) return { ok: false, reason: `A call costs ${cost} points. Catch a Gyanu or drop Scene pins first.` };
+    me.score -= cost; me.boughtCalls = (me.boughtCalls || 0) + 1; me.callBonus = (me.callBonus || 0) + 1;
+    this.save(db); return { ok: true, cost };
+  }
+  // ---------- (legacy) paid extra calls: player pays by UPI QR, enters the last 4 of the reference, crew approves
   async requestCalls(ref) {
     const db = this.load(); const me = this.me(db); if (!me) throw new Error('Join first');
     const no = reason => ({ ok: false, reason }); const code = String(ref || '').trim().toUpperCase();
@@ -342,9 +362,9 @@ export class LocalBackend {
     me.reports = (me.reports || []).filter(t => now() - t < 3600e3);
     // same thing already pinned there? count it as a confirmation instead of a duplicate pin
     const same = this.liveScene(db).find(r => r.cat === cat && r.zone === zone && !r.official);
-    if (same) { if (!same.yes.includes(me.id) && same.by !== me.id) { same.yes.push(me.id); same.lastYes = now(); } this.save(db); return { merged: true, points: 0 }; }
+    if (same) { if (!same.yes.includes(me.id) && same.by !== me.id) { same.yes.push(me.id); same.lastYes = now(); addHelp(me); } this.save(db); return { merged: true, points: 0 }; }
     const pts = me.reports.length < RULES.reportCapPerHour ? RULES.reportPoints : 0;
-    me.reports.push(now()); me.score += pts;
+    me.reports.push(now()); me.score += pts; if (pts > 0) addHelp(me);
     db.scene.push({ id: uid('r_'), cat, zone, note: cleanNote(note), by: me.id, official: false, createdAt: now(), yes: [], gone: [] });
     this.save(db);
     return { merged: false, points: pts };
@@ -352,7 +372,7 @@ export class LocalBackend {
   async vote(id, kind) {
     const db = this.load(); const me = this.me(db); if (!me) throw new Error('Join first');
     const r = db.scene.find(x => x.id === id); if (!r || r.by === me.id || r.yes.includes(me.id) || r.gone.includes(me.id)) return false;
-    if (kind === 'yes') { r.yes.push(me.id); r.lastYes = now(); const a = db.players.find(p => p.id === r.by); if (a && r.yes.length <= 5) a.score += RULES.confirmPoints; }
+    if (kind === 'yes') { r.yes.push(me.id); r.lastYes = now(); addHelp(me); const a = db.players.find(p => p.id === r.by); if (a && r.yes.length <= 5) a.score += RULES.confirmPoints; }
     else r.gone.push(me.id);
     this.save(db); return true;
   }
@@ -588,6 +608,7 @@ export class SupabaseBackend {
   }
   async hype(level) { return this.rpc('gh_hype', { p_token: this.tok(), p_level: level }); }
   async homeScore(n) { return this.rpc('gh_home_score', { p_token: this.tok(), p_score: n }); }
+  async buyCall() { return this.rpc('gh_buy_call', { p_token: this.tok() }); }
   async requestCalls(ref) { return this.rpc('gh_request_calls', { p_token: this.tok(), p_ref: String(ref || '') }); }
   async callCrowd(kind, text) { const s = cleanSlogan(text); if (s.error) return { ok: false, reason: s.error.replace('placard', 'chant') }; return this.rpc('gh_call_crowd', { p_token: this.tok(), p_kind: kind, p_text: s.slogan }); }
   async punchScore(n) { return this.rpc('gh_punch_score', { p_token: this.tok(), p_score: n }); }

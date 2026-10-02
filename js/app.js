@@ -375,6 +375,7 @@ async function handleNotices() {
   for (const x of n) {
     if (x.kind === 'approved') showResult({ status: 'approved', points: x.points, parts: x.parts, streak: x.streak, special: x.special }, null, true);
     else if (x.kind === 'rejected') toast('❌ ' + T.rejected, 4000);
+    else if (x.kind === 'callsearned') { confetti(30); play('cash'); toast('📣 +1 call earned for helping the crowd!', 4000); }
     else if (x.kind === 'callsgranted') { confetti(40); play('cash'); toast(`✅ +${x.calls} calls added. Go call the crowd!`, 4500); }
     else if (x.kind === 'callsdenied') toast('We couldn’t match that payment. Tap 💬 and tell us, we’ll sort it.', 5000);
     else if (x.kind === 'hypecall') { confetti(30); play('cash'); toast(`📣 Your call moved ${x.joined} phone${x.joined === 1 ? '' : 's'}: +${x.points} energy points`, 4500); }
@@ -785,8 +786,8 @@ function openCall() {
     <input class="field" id="cText" maxlength="40" value="${esc(line)}" style="margin:10px 0 4px;text-align:center" aria-label="Your chant">
     <p class="small muted" style="color:#CFC6B8">Type your own in English letters, or tap a ready-made one. Keep it fun, not nasty.</p>
     <p class="err" id="cErr" style="min-height:18px"></p>
-    <div class="sw stack"><button class="btn pink" id="cGo" ${left ? '' : 'disabled'}>📣 SEND TO EVERY PHONE</button>${CONFIG.pay?.rupees ? `<button class="btn ${left ? 'ghost' : 'teal'}" id="cBuy" style="${left ? 'color:var(--ink)' : ''}">💸 NEED MORE CALLS? ₹${CONFIG.pay.rupees} = ${CONFIG.pay.calls} CALLS${st.me.pendingCalls ? ` (${st.me.pendingCalls} waiting)` : ''}</button>` : ''}<button class="link" style="color:#fff" id="cX">cancel</button></div>`);
-  o.querySelector('#cBuy')?.addEventListener('click', () => { o.remove(); openBuyCalls(); });
+    <div class="sw stack"><button class="btn pink" id="cGo" ${left ? '' : 'disabled'}>📣 SEND TO EVERY PHONE</button><button class="btn ${left ? 'ghost' : 'teal'}" id="cBuy" style="${left ? 'color:var(--ink)' : ''}">➕ NEED MORE CALLS?</button><button class="link" style="color:#fff" id="cX">cancel</button></div>`);
+  o.querySelector('#cBuy')?.addEventListener('click', () => { o.remove(); openMoreCalls(); });
   const text = o.querySelector('#cText');
   o.querySelector('#cX').onclick = () => o.remove();
   o.querySelectorAll('[data-k]').forEach(b => (b.onclick = () => {
@@ -806,25 +807,26 @@ function openCall() {
   };
 }
 
-function openBuyCalls() {
-  const P = CONFIG.pay;
+function openMoreCalls() {
+  const m = st.me, per = RULES.callHelpsPer, earned = m.earnedCalls || 0, bought = m.boughtCalls || 0, cost = m.callCost, can = m.score >= cost && bought < RULES.callBuyCap;
+  const dots = Array.from({ length: per }, (_, i) => `<i class="hdot${i < (m.helps || 0) ? ' on' : ''}"></i>`).join('');
   const o = layer(`<h2 class="big" style="font-size:32px">MORE CALLS</h2>
-    <p class="small" style="margin:8px 0 10px">Totally optional. ₹${P.rupees} = ${P.calls} extra calls to call the crowd.</p>
-    <div class="qrbox"><img id="payQr" src="${esc(P.qr)}" alt="Payment QR code"><p id="payNoQr" class="hide small" style="color:var(--ink)">The payment QR isn’t set up yet. Ask the crew, or just play with your free calls.</p></div>
-    <ol class="paysteps"><li>Scan the QR with any UPI app and pay <b>₹${P.rupees}</b>.</li><li>Type the <b>last 4 characters</b> of the UPI reference / transaction ID.</li><li>Tap SEND. A crew member checks it and your ${P.calls} calls land in a few minutes.</li></ol>
-    <input class="field" id="payRef" maxlength="4" autocomplete="off" autocapitalize="characters" placeholder="last 4 of reference, e.g. 4F7A" style="text-align:center;letter-spacing:.15em;margin-top:6px">
-    <p class="small muted" style="color:#CFC6B8;margin-top:4px">Only the 4 characters. No phone number, no name, no bank details.</p>
-    <p class="err" id="payErr" style="min-height:18px"></p>
-    <div class="sw stack"><button class="btn pink" id="payGo">SEND FOR APPROVAL</button><button class="link" style="color:#fff" id="payX">back</button></div>`);
-  const img = o.querySelector('#payQr'); img.onerror = () => { img.classList.add('hide'); o.querySelector('#payNoQr').classList.remove('hide'); };
-  o.querySelector('#payX').onclick = () => { o.remove(); openCall(); };
-  o.querySelector('#payGo').onclick = async () => {
-    const err = o.querySelector('#payErr'); err.textContent = '';
-    try {
-      const r = await backend.requestCalls(o.querySelector('#payRef').value);
-      if (!r.ok) { err.textContent = r.reason; return; }
-      o.remove(); play('cash'); toast('💸 Sent! The crew will approve it shortly.', 3500); await refresh();
-    } catch (e) { err.textContent = e.message; }
+    <p class="small" style="margin:6px 0 10px">You have <b>${m.callsLeft}</b> left. Two ways to get more, no money.</p>
+    <div class="morecard"><h3>📍 HELP THE CROWD <small>(the easy way)</small></h3>
+      <p>Drop a pin for water, food, toilets, shade or charging, or confirm someone else’s pin. Every <b>${per}</b> helps = <b>1 free call</b>.</p>
+      <div class="hdots">${dots}<span>${m.helps || 0}/${per} to your next call · ${earned}/${RULES.callEarnCap} earned</span></div>
+      <button class="btn pink" id="mcPin" ${earned >= RULES.callEarnCap ? 'disabled' : ''}>${earned >= RULES.callEarnCap ? 'MAX EARNED. NICE.' : '📍 GO TO THE SCENE'}</button></div>
+    <div class="morecard"><h3>⭐ SPEND POINTS <small>(the steep way)</small></h3>
+      <p>One call costs about <b>55%</b> of your points (at least ${RULES.callBuyMin}). Right now: <b>${fmt(cost)} pts</b>, and you have ${fmt(m.score)}. Max ${RULES.callBuyCap} this way (${bought} used).</p>
+      <button class="btn teal" id="mcBuy" ${can ? '' : 'disabled'}>${bought >= RULES.callBuyCap ? 'ALL 3 BOUGHT' : can ? `⭐ SPEND ${fmt(cost)} PTS FOR 1 CALL` : `NEED ${fmt(cost)} PTS`}</button></div>
+    <p class="err" id="mcErr" style="min-height:18px"></p>
+    <div class="sw stack"><button class="link" style="color:#fff" id="mcX">back</button></div>`);
+  o.querySelector('#mcX').onclick = () => { o.remove(); openCall(); };
+  o.querySelector('#mcPin').onclick = () => { o.remove(); sceneFilter = null; go('scene'); toast('📍 Pick a type and drop a pin. 3 helps = 1 call.', 3500); };
+  o.querySelector('#mcBuy').onclick = async () => {
+    const err = o.querySelector('#mcErr'); err.textContent = '';
+    try { const r = await backend.buyCall(); if (!r.ok) { err.textContent = r.reason; return; } o.remove(); play('cash'); toast(`⭐ −${fmt(r.cost)} pts. +1 call!`, 3000); await refresh(); openCall(); }
+    catch (e) { err.textContent = e.message; }
   };
 }
 

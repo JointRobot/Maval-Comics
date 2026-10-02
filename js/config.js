@@ -20,9 +20,8 @@ export const CONFIG = {
   // Optional real sound clips (CC0). Anything not listed stays synthesised. e.g. { horn: 'audio/horn.mp3', boom: 'audio/boom.mp3' }
   sfxFiles: {},
 
-  // Optional ₹ top-up for extra "Call the crowd" calls. Drop your UPI QR image at img/pay-qr.png. A crew member approves each payment
-  // in the Control Room (PAYMENTS tab), because a static site can't verify a UPI payment by itself. Set rupees: 0 to hide the feature.
-  pay: { rupees: 5, calls: 5, qr: 'img/pay-qr.png' },
+  // Extra "Call the crowd" calls are earned by helping (Scene pins) or bought with points; no money. (Legacy ₹ top-up: rupees: 0 = off.)
+  pay: { rupees: 0, calls: 5, qr: '' },
 
   eventName: 'GYANU HUNT',
   credit: 'Created by Maval Comics',
