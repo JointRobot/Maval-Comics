@@ -113,7 +113,7 @@ async function doJoin() {
     }
     await backend.register(n.nick, sl.slogan);
     play('level'); await enterGame();
-    if (wantHome) startWhack(); else firstRun();
+    if (wantHome) startWhack(); else entryStart(true);
   } catch (e) { $('#joinErr').textContent = e.message; }
   $('#joinGo').disabled = false;
 }
@@ -159,7 +159,7 @@ async function enterGame() {
   $('#landing').classList.add('hide'); $('#join').classList.add('hide'); $('#game').classList.remove('hide');
   if (!map) {
     map = new IsoMap($('#map'), {
-      onHunt: id => { selHunt = id; renderSheet(); },
+      onHunt: id => { selHunt = id; renderSheet(); sayHi(GYANU_VOICE.ask, { rate: 1, pitch: 1.4 }); },
       onZone: (z, kind) => { if (kind === 'scene') { go('scene'); sceneFilter = null; renderScene(z); } else { const h = st?.hunts.find(h => h.zone === z && !h.found); if (h) { selHunt = h.id; renderSheet(); } else toast(`${zoneName(z)} — no Gyanu pinging here rn.`); } },
       onPop: p => { if (whack) { play(p.kind === 'roach' ? 'bruh' : p.kind === 'gold' ? 'cash' : 'pop'); whack.hit(p); } },
       padBottom: () => ($('#sheet').offsetHeight || 0) + 10,
@@ -367,7 +367,7 @@ function wireUseful(o, zone) {
 
 function showResult(res, zone, judged) {
   if (res.status === 'approved') {
-    buzz([60, 40, 120]); confetti();
+    buzz([60, 40, 120]); confetti(); sayHi(GYANU_VOICE.chant);
     if (res.special) combo('boom', 'tada'); else combo('horn', 'cash');
     const p = res.parts || {};
     const special = res.special === 'golden' ? '<p class="tag golden" style="margin:6px 0">✨ YOU GOT THE GOLDEN GYANU ✨</p>' : res.special === 'final' ? '<p class="tag final" style="margin:6px 0">💀 FINAL BOSS DOWN. LEGEND. 💀</p>' : '';
@@ -809,26 +809,34 @@ function startWhack() {
   intro.querySelector('#wX').onclick = () => intro.remove();
   intro.querySelector('#wGo').onclick = () => { intro.remove(); runWhack(); };
 }
-function runWhack() {
-  const spots = map.popSpots(), DUR = 30000, t0 = performance.now();
-  let score = 0, pops = [], nextAt = t0 + 400, id = 0;
+// Entry game: you land straight in Whack-a-Gyanu. Bonk WIN_AT Gyanus and you win; then pick what next. Skippable.
+let entryDone = false;
+function entryStart(first) {
+  if (entryDone || whack) return; entryDone = true;
+  go('hunt'); closeAll(); runWhack({ first });
+}
+function runWhack(entry) {
+  const spots = map.popSpots(), DUR = entry ? 40000 : 30000, WIN_AT = 12, t0 = performance.now();
+  let score = 0, won = false, skipped = false, pops = [], nextAt = t0 + 400, id = 0;
   const bar = $('#whackbar'); bar.classList.remove('hide'); $('#status').classList.add('hide');
   whack = {
     hit(p) {
       if (p.hit) return; p.hit = true; p.hitAt = performance.now();
       if (p.kind === 'roach') { score = Math.max(0, score - 3); buzz([40, 30, 40]); toast(T.homeRoach, 900); }
       else { score += p.kind === 'gold' ? 5 : 1; buzz(18); sayHi(GYANU_VOICE.chant); }
+      if (entry && score >= WIN_AT) won = true;
       draw();
     }
   };
   map.setState({ hunts: [] }); renderSheet(); setTimeout(() => sayHi(GYANU_VOICE.ask, { rate: 1, pitch: 1.4, gap: 600 }), 500);
   const draw = () => {
     const left = Math.max(0, Math.ceil((DUR - (performance.now() - t0)) / 1000));
-    bar.innerHTML = `<span class="chip">⏱ ${left}s</span><span class="chip" style="margin-left:auto">🔨 ${score}</span>`;
+    bar.innerHTML = `<span class="chip">⏱ ${left}s</span>${entry ? `<span class="chip">${Math.min(score, WIN_AT)}/${WIN_AT}</span>` : ''}<span class="chip" style="margin-left:auto">🔨 ${score}</span>${entry ? '<button class="chip" id="wSkip" style="cursor:pointer">SKIP ›</button>' : ''}`;
+    const sk = $('#wSkip'); if (sk) sk.onclick = () => { skipped = true; };
   };
   const loop = () => {
     const now = performance.now(), el = now - t0;
-    if (el >= DUR) return end();
+    if (el >= DUR || won || skipped) return end();
     pops = pops.filter(p => now - p.born < p.life + 350);
     if (now >= nextAt) {
       const busy = new Set(pops.map(p => p.si));
@@ -843,7 +851,22 @@ function runWhack() {
   };
   const end = async () => {
     map.setPops([]); bar.classList.add('hide'); $('#status').classList.remove('hide'); whack = null;
+    if (skipped) { refresh(); if (entry.first) firstRun(); else coach(); return; }
     let r = { ok: false, reason: '' }; try { r = await backend.homeScore(score); } catch (e) { r.reason = e.message; }
+    if (entry) {
+      confetti(80); play(won ? 'tada' : 'bruh');
+      const o = layer(`<img class="mascot" src="img/gyanu.svg" style="width:110px"><h2 class="big">${won ? 'YOU WIN, NO CAP' : score + ' BONKS'}</h2>
+        <p class="d" style="font-size:20px;color:var(--pink);margin:8px 0">${won ? 'Gyanu ko pooora sajaya. 🔨' : 'Thoda aur bonk karna tha. Phir se?'}</p>
+        <div class="sw stack" style="margin-top:12px"><button class="btn pink" id="eA">${won ? 'KEEP WHACKING' : 'TRY AGAIN'}</button><button class="btn" id="eB">🔎 GO FIND GYANU</button>
+        <button class="btn ghost" style="color:var(--ink)" id="eC">🥊 PUNCHING BAG</button><button class="btn ghost" style="color:var(--ink)" id="eD">📢 VASTA GYANU HAIYA</button>
+        <button class="btn ghost" style="color:var(--ink)" id="eE">LEADERBOARD</button></div>`, 'burst');
+      o.querySelector('#eA').onclick = () => { o.remove(); runWhack(); };
+      o.querySelector('#eB').onclick = () => { o.remove(); refresh(); if (entry.first) firstRun(); else coach(); };
+      o.querySelector('#eC').onclick = () => { o.remove(); startPunch(); };
+      o.querySelector('#eD').onclick = () => { o.remove(); startShout(); };
+      o.querySelector('#eE').onclick = () => { o.remove(); scope = 'home'; go('score'); };
+      refresh(); return;
+    }
     confetti(score > 10 ? 70 : 20); play(score > 10 ? 'tada' : 'bruh');
     const o = layer(`<h2 class="big">${score} BONKS</h2><p class="d" style="font-size:20px;color:var(--pink);margin:10px 0">${esc(T.homeDone(score))}</p>
       ${r.ok ? `<p>${r.best ? '🏆 NEW PERSONAL BEST' : esc(T.homeBest(r.homeBest))}</p>` : `<p>${esc(r.reason)}</p>`}
@@ -1024,7 +1047,7 @@ function boot() {
   fillStatic();
   const back = !!backend.meId(); // returning players still see the start screen, and tap to continue (it used to flash past)
   if (back) $('#playBtn').textContent = 'CONTINUE THE HUNT';
-  $('#playBtn').onclick = () => (back ? enterGame() : showJoin(false));
+  $('#playBtn').onclick = async () => { if (back) { await enterGame(); entryStart(false); } else showJoin(false); };
   $('#status').addEventListener('click', e => { if (e.target.closest('[data-crowd]')) openCrowd(); else if (e.target.closest('[data-call]')) openCall(); });
   landingCrowd();
   $('#introBtn').onclick = () => runTour(INTRO, { autoChoice: true, doneLabel: 'LET’S PLAY' });
