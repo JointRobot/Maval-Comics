@@ -11,6 +11,7 @@ import { micMeter, motionMeter, tapMeter } from './sensors.js';
 import { shareCard } from './share.js';
 import { play, combo, unlock, setMuted, sfxState, stopSpeak } from './sfx.js';
 import { runTour, tourOpen } from './tour.js';
+import { ROAM } from './copy.js';
 import { openFeedback } from './feedback.js';
 
 // ---------------------------------------------------------------- helpers
@@ -126,16 +127,31 @@ function startTour(first) {
 }
 // Brand-new players get walked through automatically (voice + big text); it's skippable and never repeats.
 function firstRun() { if (lsGet('gh_toured') && !wantTour) return; wantTour = false; setTimeout(() => startTour(true), 650); }
-// After the tour: a bouncing instruction bar that keeps telling them the next move until their first scan.
-function coach() {
-  document.querySelector('.coach')?.remove();
-  const lines = ['👆 Tap the pulsing pin on the map', '🚶 Walk to the spot. Calmly!', '📸 Hit SCAN FOR GYANU and snap the print', '🔨 Waiting? Whack a Gyanu or throw a punch'];
-  let n = 0; const el = document.createElement('div'); el.className = 'coach'; el.textContent = lines[0];
-  $('#v-hunt').appendChild(el);
-  const place = () => { el.style.bottom = (($('#sheet').offsetHeight || 0) + 18) + 'px'; }; place();
-  const t = setInterval(() => { if (lsGet('gh_scanned') || !el.isConnected) { clearInterval(t); el.remove(); return; } n = (n + 1) % lines.length; place(); el.textContent = lines[n]; el.classList.remove('in'); void el.offsetWidth; el.classList.add('in'); }, 5000);
-  el.onclick = () => { clearInterval(t); el.remove(); };
+// The "next move" bar: always on the hunt screen, always telling the player what to do next. Tap it to do it.
+let coachEl = null, coachI = 0, coachList = [];
+function suggestions() {
+  const L = [], me = st?.me; if (!st || !me || st.settings.paused || st.settings.ended) return L;
+  const R = roamPins().filter(r => !r.got && !r.mine).sort((a, b) => ({ golden: 0, wild: 1, player: 2 }[a.kind] - { golden: 0, wild: 1, player: 2 }[b.kind]) || a.left - b.left);
+  for (const r of R.slice(0, 2)) L.push({ t: r.kind === 'golden' ? `✨ GOLDEN Gyanu at ${ZONES.find(z => z.id === r.zone)?.short}! ${r.left} spot${r.left === 1 ? '' : 's'} left. Run (walk)!` : r.kind === 'player' ? `🎁 ${r.by || 'A player'} hid a Gyanu at ${ZONES.find(z => z.id === r.zone)?.short}. ${r.left} left, go catch!` : `🪳 Wild Gyanu at ${ZONES.find(z => z.id === r.zone)?.short}! Only ${r.left} can catch him`, go: () => { selHunt = r.id; go('hunt'); renderSheet(); } });
+  const F = openHunts()[0];
+  if (F) L.push({ t: `📍 Gyanu pinging at ${ZONES.find(z => z.id === F.zone)?.short}. Walk there, then SCAN`, go: () => { selHunt = F.id; go('hunt'); renderSheet(); } });
+  if (!roamPins().some(r => r.mine) && (me.dropsLeft ?? 0) > 0) L.push({ t: '🎁 Hide YOUR Gyanu for others. You earn +10 per catch', go: () => openRoamDrop() });
+  if (Date.now() - (me.lastSubmitAt || 0) > 0 && !F && !R.length) L.push({ t: '🔨 Quiet right now. Whack a Gyanu while the next one spawns', go: startWhack });
+  L.push({ t: me.callsLeft > 0 ? '📣 Call the crowd and see how many phones you move' : '📍 Spotted water or food? Pin it on The Scene for points', go: me.callsLeft > 0 ? openCall : () => go('scene') });
+  L.push({ t: '🥊 Waiting for a spawn? Punch it out for the leaderboard', go: startPunch });
+  return L.slice(0, 4);
 }
+function paintCoach(rotate) {
+  if (!coachEl) { coachEl = document.createElement('div'); coachEl.className = 'coach'; $('#v-hunt').appendChild(coachEl); coachEl.onclick = () => { coachList[coachI % coachList.length]?.go?.(); }; }
+  const hide = whack || tourOpen() || view !== 'hunt' || $('#layer').children.length || st?.me?.banned || st?.settings.paused;
+  coachEl.style.display = hide ? 'none' : '';
+  if (hide) return;
+  coachList = suggestions(); if (!coachList.length) { coachEl.style.display = 'none'; return; }
+  if (rotate) coachI++; const cur = coachList[coachI % coachList.length];
+  if (coachEl.textContent !== cur.t) { coachEl.textContent = cur.t; coachEl.classList.remove('in'); void coachEl.offsetWidth; coachEl.classList.add('in'); }
+  coachEl.style.bottom = (($('#sheet').offsetHeight || 0) + 18) + 'px';
+}
+function coach() { paintCoach(false); }
 
 // ---------------------------------------------------------------- game shell
 async function enterGame() {
@@ -159,7 +175,7 @@ function go(v) {
   view = v;
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
   for (const id of ['hunt', 'scene', 'score', 'rules', 'profile']) $('#v-' + id).classList.toggle('hide', id !== v);
-  if (v === 'hunt') map?.start(); else map?.stop();
+  if (v === 'hunt') { map?.start(); paintCoach(false); } else { map?.stop(); paintCoach(false); }
   if (v !== 'scene') sceneMap?.stop();
   if (v === 'scene') renderScene(); if (v === 'score') renderBoard(); if (v === 'rules') renderRules(); if (v === 'profile') renderProfile();
 }
@@ -176,8 +192,8 @@ async function refresh() {
       return;
     }
     st = s;
-    renderTop(); renderSheet(); renderStatus(); handleAlerts(); handleNotices(); handleHype();
-    map.setState({ hunts: whack ? [] : st.hunts, zones: st.zones, mood: st.settings.finalLive ? 'final' : 'evening' });
+    renderTop(); renderSheet(); renderStatus(); handleAlerts(); handleRoamAlerts(); handleNotices(); handleHype(); paintCoach(false);
+    map.setState({ hunts: whack ? [] : pins(), zones: st.zones, mood: st.settings.finalLive ? 'final' : 'evening' });
     if (view === 'scene' || ++sceneTick % 4 === 1) refreshSceneData(); if (view === 'score') renderBoard(true);
   } catch (e) { console.warn(e); renderStatus(true); }
   finally { refreshing = false; if (again) { again = false; refresh(); } }
@@ -197,6 +213,10 @@ function renderStatus(offline) {
   $('#status').innerHTML = chips.join('');
 }
 
+const roamPins = () => (st?.roamers || []).map(r => ({ ...r, roam: true, type: 'roam', found: false, kind: r.kind }));
+const pins = () => (st?.hunts || []).concat(roamPins());
+const sname = id => ZONES.find(z => z.id === id)?.short || id;
+const mmss = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 const openHunts = () => (st?.hunts || []).filter(h => !h.found).sort((a, b) => ({ final: 0, golden: 1, classic: 2 }[a.type] - { final: 0, golden: 1, classic: 2 }[b.type]));
 
 function speedLine(h) {
@@ -214,20 +234,38 @@ function renderSheet() {
   if (st.settings.paused) {
     el.innerHTML = `<div class="panel paused"><h3>⏸ ${esc(T.pausedTitle)}</h3><p style="font-weight:700;margin-top:6px">${esc(st.settings.pauseReason || T.pausedDefault)}</p></div>`; return;
   }
-  const open = openHunts();
-  if (!open.length) {
+  const open = openHunts(), roams = roamPins();
+  if (!open.length && !roams.length) {
     el.innerHTML = `<div class="panel"><h3>${esc(T.noHunts)}</h3><p class="muted" style="margin:6px 0 10px">${esc(T.noHuntsSub)}</p>
-      <div class="row"><button class="btn teal" id="wBtn" style="font-size:14px">🔨 WHACK</button><button class="btn teal" id="pBtn" style="font-size:14px">🥊 PUNCH</button><button class="btn pink" id="cBtn" style="font-size:14px">📣 CALL</button></div><button class="btn ghost" data-go="scene" style="margin-top:8px">📍 THE SCENE</button></div>`;
-    el.querySelector('[data-go]').onclick = () => go('scene'); $('#wBtn').onclick = startWhack; $('#pBtn').onclick = startPunch; $('#cBtn').onclick = openCall;
+      <div class="row"><button class="btn teal" id="wBtn" style="font-size:14px">🔨 WHACK</button><button class="btn teal" id="pBtn" style="font-size:14px">🥊 PUNCH</button><button class="btn pink" id="cBtn" style="font-size:14px">📣 CALL</button></div><button class="btn ghost" id="dropBtn" style="margin-top:8px">🎁 HIDE YOUR OWN GYANU</button></div>`;
+    $('#dropBtn').onclick = () => openRoamDrop(); $('#wBtn').onclick = startWhack; $('#pBtn').onclick = startPunch; $('#cBtn').onclick = openCall;
     return;
   }
-  if (!open.some(h => h.id === selHunt)) selHunt = open[0].id;
-  const h = open.find(x => x.id === selHunt);
-  map.setState({ selected: h.id });
+  const all = open.concat(roams);
+  if (!all.some(h => h.id === selHunt)) selHunt = all[0].id;
+  const sel = all.find(x => x.id === selHunt);
+  map.setState({ selected: sel.id });
+  const chipRow = `${all.length > 1 ? `<div class="pickhunts">${all.map(o => `<button class="chip${o.id === sel.id ? ' on' : ''}" data-h="${o.id}">${o.roam ? (o.kind === 'golden' ? '✨' : o.kind === 'player' ? '🎁' : '🪳') : o.type === 'golden' ? '✨' : o.type === 'final' ? '💀' : '🎯'} ${esc(sname(o.zone))}</button>`).join('')}</div>` : ''}`;
+  if (sel.roam) {
+    const r = sel, ord = r.slots - r.left, pts = RULES.roamPts[r.kind]?.[ord] ?? 0, kt = ROAM.kindTag[r.kind];
+    el.innerHTML = `<div class="panel roampanel">${chipRow}
+      <div class="huntmeta"><span class="tag roam-${r.kind}">${kt}</span><b>📍 ${esc(zoneName(r.zone))}</b></div>
+      <p class="roamline"><span id="roamLeft">${r.left} of ${r.slots} spots left</span> · fades in <b id="roamClock">${mmss(r.endsAt - serverNow())}</b>${r.hops ? ' · 🔀 moves around' : ''}</p>
+      ${r.by ? `<p class="small muted" style="margin:0 0 4px">🎁 hidden by <b>${esc(r.by)}</b>${r.mine ? ' (you!)' : ''}</p>` : ''}
+      ${r.hint ? `<p class="hint">“${esc(r.hint)}”</p>` : ''}
+      ${r.mine ? `<p class="small" style="margin:6px 0 10px;font-weight:700">${esc(ROAM.mineNote)}</p>` : r.got ? `<p class="small" style="margin:6px 0 10px;font-weight:700">${esc(ROAM.gotNote)}</p>` : `<p class="small" style="margin:6px 0 10px;font-weight:700">${esc(ROAM.nextPts(pts, ord + 1))}</p>`}
+      <button class="btn pink" id="catchBtn" ${r.mine || r.got ? 'disabled' : ''}>${r.mine ? '🎁 YOURS · WAITING FOR CATCHERS' : r.got ? '✅ CAUGHT' : '🎯 CATCH HIM'}</button>
+      <div class="row" style="margin-top:8px"><button class="btn teal" id="dropBtn" style="min-height:46px;font-size:13px">🎁 HIDE · ${st.me.dropsLeft ?? 0}</button><button class="btn teal" id="wBtn" style="min-height:46px;font-size:14px">🔨 WHACK</button><button class="btn teal" id="pBtn" style="min-height:46px;font-size:14px">🥊 PUNCH</button></div>
+    </div>`;
+    el.querySelectorAll('[data-h]').forEach(b => (b.onclick = () => { selHunt = b.dataset.h; renderSheet(); }));
+    $('#catchBtn').onclick = () => openCatch(r); $('#dropBtn').onclick = () => openRoamDrop(); $('#wBtn').onclick = startWhack; $('#pBtn').onclick = startPunch;
+    return;
+  }
+  const h = sel;
   const triesLeft = RULES.maxTriesPerGyanu - h.tries;
   const tag = h.type === 'golden' ? '✨ GOLDEN' : h.type === 'final' ? '💀 FINAL BOSS' : 'CLASSIC';
   el.innerHTML = `<div class="panel">
-    ${open.length > 1 ? `<div class="pickhunts">${open.map(o => `<button class="chip${o.id === h.id ? ' on' : ''}" data-h="${o.id}">${o.type === 'golden' ? '✨' : o.type === 'final' ? '💀' : '🎯'} ${esc(ZONES.find(z => z.id === o.zone)?.short)}</button>`).join('')}</div>` : ''}
+    ${chipRow}
     <h3>${esc(T.hiding)}</h3>
     <div class="huntmeta"><span class="tag ${h.type}">${tag}</span><b>📍 ${esc(zoneName(h.zone))}</b>${h.finds ? `<span class="small muted">· ${h.finds} found him</span>` : `<span class="small" style="color:var(--pink);font-weight:800">· nobody yet!</span>`}</div>
     ${h.hint ? `<p class="hint">“${esc(h.hint)}”</p>` : ''}
@@ -235,9 +273,10 @@ function renderSheet() {
     <p class="small muted" style="margin:2px 0 10px">${h.pending ? '⏳ ' + esc(T.pending) : esc(T.tries(triesLeft))} · ${esc(T.safetyShort)}</p>
     <button class="btn pink" id="scanBtn" ${h.pending || triesLeft <= 0 ? 'disabled' : ''}>📸 ${esc(T.scan)}</button>
     <div class="row" style="margin-top:8px"><button class="btn teal" id="wBtn" style="min-height:46px;font-size:14px">🔨 WHACK</button><button class="btn teal" id="pBtn" style="min-height:46px;font-size:14px">🥊 PUNCH</button><button class="btn pink" id="cBtn" style="min-height:46px;font-size:14px">📣 CALL</button></div>
+    <button class="btn ghost" id="dropBtn" style="margin-top:8px;min-height:42px;font-size:13px">🎁 HIDE YOUR OWN GYANU · ${st.me.dropsLeft ?? 0} left</button>
   </div>`;
   el.querySelectorAll('[data-h]').forEach(b => (b.onclick = () => { selHunt = b.dataset.h; renderSheet(); }));
-  $('#scanBtn').onclick = () => scan(h); $('#wBtn').onclick = startWhack; $('#pBtn').onclick = startPunch; $('#cBtn').onclick = openCall;
+  $('#dropBtn').onclick = () => openRoamDrop(); $('#scanBtn').onclick = () => scan(h); $('#wBtn').onclick = startWhack; $('#pBtn').onclick = startPunch; $('#cBtn').onclick = openCall;
   coolTick();
 }
 // After a shot, the button counts down the cooldown instead of letting people spam.
@@ -251,8 +290,10 @@ function coolTick() {
 setInterval(() => { // live speed-bonus countdown without hitting the server
   const h = st?.hunts.find(x => x.id === selHunt), el = $('#speedLine');
   if (h && el) el.textContent = speedLine(h);
+  const rc = $('#roamClock'), r = st?.roamers?.find(x => x.id === selHunt); if (rc && r) { rc.textContent = mmss(r.endsAt - serverNow()); if (r.endsAt < serverNow() - 1500) refresh(); }
   coolTick();
 }, 1000);
+setInterval(() => paintCoach(true), 7000);
 
 // ---------------------------------------------------------------- camera + submit
 async function scan(h) {
@@ -369,12 +410,90 @@ function handleAlerts() {
   if (st.settings.ended && !seen.has('end:' + st.settings.winner)) { markSeen('end:' + st.settings.winner); showEnd(); }
 }
 
+let roamPrev = null;
+function handleRoamAlerts() {
+  const cur = new Map((st.roamers || []).map(r => [r.id, r]));
+  if (roamPrev) {
+    for (const r of cur.values()) {
+      const o = roamPrev.get(r.id);
+      if (!o) { if (r.mine) continue; buzz([120, 60, 120]); play('pop'); toast(r.kind === 'player' ? ROAM.dropAppear(r.by, sname(r.zone)) : r.kind === 'golden' ? ROAM.goldenAppear(sname(r.zone)) : ROAM.wildAppear(sname(r.zone), r.slots), 4200); }
+      else if (o.zone !== r.zone && !r.got && !r.mine) { buzz(80); play('whoosh'); toast(ROAM.hopped(sname(o.zone), sname(r.zone)), 3600); }
+      else if (o.left > r.left && !r.got && !r.mine && r.left <= 1) toast(ROAM.lastSpot(sname(r.zone)), 3200);
+    }
+    for (const o of roamPrev.values()) if (!cur.has(o.id) && !o.got && !o.mine && selHunt === o.id) toast(ROAM.gone, 3600);
+  }
+  roamPrev = cur;
+}
+
+// The catch: Gyanu sprints back and forth, you tap THROW when he's in the green. Zero network until you land it.
+function openCatch(r0) {
+  const r = (st.roamers || []).find(x => x.id === r0.id) || r0;
+  const need = !!r.needCode; let code = '', speed = 1.5, raf = 0, busy = false, zw = 0.3, zc = 0.5;
+  const o = layer(`<img class="mascot" src="img/gyanu.svg" alt=""><h2 class="big" style="font-size:34px;margin-top:6px">${esc(ROAM.catchTitle)}</h2>
+    <p style="margin:6px 0 8px;font-weight:700">${esc(need ? ROAM.catchCode(zoneName(r.zone)) : ROAM.catchSub)}</p>
+    ${need ? `<input class="field" id="rcode" maxlength="8" placeholder="zone code" autocapitalize="characters" style="max-width:200px;text-align:center;margin-bottom:8px">` : ''}
+    <div class="tbar" id="tbar"><div class="tzone" id="tz"></div><div class="tmark" id="tm">🪳</div></div>
+    <p class="small" id="tmsg" style="margin:8px 0 10px;min-height:20px">${esc(ROAM.catchHint)}</p>
+    <div class="sw stack"><button class="btn pink" id="throw">🎯 THROW!</button><button class="link" style="color:#fff" id="rx">leave him</button></div>`);
+  const bar = o.querySelector('#tbar'), tm = o.querySelector('#tm'), tz = o.querySelector('#tz'), msg = o.querySelector('#tmsg');
+  const setZone = () => { zw = Math.max(0.16, 0.3 - (speed - 1.5) * 0.04); zc = 0.25 + Math.random() * 0.5; tz.style.left = (zc - zw / 2) * 100 + '%'; tz.style.width = zw * 100 + '%'; };
+  setZone(); let pos = 0, t0 = performance.now();
+  const loop = t => { pos = (1 + Math.sin((t - t0) / 1000 * speed * 2.2)) / 2; tm.style.left = `calc(${pos * 100}% - 18px)`; raf = requestAnimationFrame(loop); };
+  raf = requestAnimationFrame(loop);
+  const close = () => { cancelAnimationFrame(raf); o.remove(); };
+  o.querySelector('#rx').onclick = close;
+  o.querySelector('#throw').onclick = async () => {
+    if (busy) return;
+    code = (o.querySelector('#rcode')?.value || '').trim();
+    if (need && !code) { msg.textContent = ROAM.needCodeMsg; return; }
+    if (Math.abs(pos - zc) > zw / 2) { buzz(40); play('bruh'); speed = Math.min(3.2, speed + 0.25); setZone(); msg.textContent = pick(ROAM.miss); bar.classList.remove('shake'); void bar.offsetWidth; bar.classList.add('shake'); return; }
+    busy = true; cancelAnimationFrame(raf); msg.textContent = 'Landed! Checking…';
+    try {
+      const res = await backend.catchRoam(r.id, code);
+      if (!res.ok) { busy = false; if (res.gone) { close(); toast('🪳 ' + res.reason, 4000); refresh(); return; } msg.textContent = res.reason || 'Nope. Try again.'; raf = requestAnimationFrame(t => { t0 = t - pos * 1000; loop(t); }); return; }
+      close(); confetti(70); buzz([60, 40, 120]); combo('cash', 'level');
+      const w = layer(`<img class="mascot" src="img/gyanu.svg" alt=""><h2 class="big" style="margin-top:8px">${esc(ROAM.winTitle(res.order))}</h2>
+        <p class="tag roam-${res.kind}" style="margin:10px 0">+${res.points} POINTS</p>
+        <p style="margin:6px 0 16px;font-weight:700">${esc(res.order >= res.slots ? ROAM.lastCatcher : ROAM.winSub(res.slots - res.order))}</p>
+        <div class="sw stack"><button class="btn pink" id="wn">${esc(ROAM.winNext)}</button></div>`, 'burst');
+      w.querySelector('#wn').onclick = () => { w.remove(); refresh(); };
+      refresh();
+    } catch (e) { busy = false; msg.textContent = e.message || 'Weak network. Tap THROW again.'; raf = requestAnimationFrame(t => { t0 = t - pos * 1000; loop(t); }); }
+  };
+}
+
+// Hide your own Gyanu: pick a zone + a hint, and 4 other players race to find it.
+function openRoamDrop() {
+  if ((st.me.dropsLeft ?? 0) <= 0 && !roamPins().some(r => r.mine)) return toast(ROAM.noDrops, 3500);
+  if (roamPins().some(r => r.mine)) return toast(ROAM.alreadyOut, 3500);
+  let z = null, hint = '';
+  const o = layer(`<img class="mascot" src="img/gyanu.svg" alt="" style="width:90px"><h2 class="big" style="font-size:32px;margin-top:6px">${esc(ROAM.dropTitle)}</h2>
+    <p style="margin:6px 0">${esc(ROAM.dropSub)}</p>
+    <p class="small" style="margin:6px 0 2px">Where are you standing?</p>
+    <div class="chips" id="rz">${ZONES.map(x => `<button class="chip" data-z="${x.id}">${esc(x.name)}</button>`).join('')}</div>
+    <p class="small" style="margin:6px 0 2px">Clue for the finders</p>
+    <div class="chips" id="rh">${ROAM.hints.map(x => `<button class="chip" data-t="${esc(x)}">${esc(x)}</button>`).join('')}</div>
+    <input class="field" id="rhi" maxlength="40" placeholder="or write your own clue" style="max-width:340px;margin:6px 0">
+    <p class="err" id="re"></p>
+    <div class="sw stack"><button class="btn pink" id="rgo">🎁 HIDE HIM</button><button class="link" style="color:#fff" id="rx">cancel</button></div>`);
+  const sel = (box, attr, set) => box.onclick = e => { const b = e.target.closest(`[${attr}]`); if (!b) return; box.querySelectorAll('.chip').forEach(q => q.classList.remove('on')); b.classList.add('on'); set(b.getAttribute(attr)); };
+  sel(o.querySelector('#rz'), 'data-z', v => (z = v)); sel(o.querySelector('#rh'), 'data-t', v => { o.querySelector('#rhi').value = v; });
+  o.querySelector('#rx').onclick = () => o.remove();
+  o.querySelector('#rgo').onclick = async () => {
+    hint = o.querySelector('#rhi').value.trim();
+    if (!z) return (o.querySelector('#re').textContent = 'Pick the zone you are in.');
+    try { const r = await backend.dropRoam(z, hint); if (!r.ok) return (o.querySelector('#re').textContent = r.reason || 'Could not hide him.'); o.remove(); confetti(40); play('cash'); toast(ROAM.dropped, 5000); refresh(); }
+    catch (e) { o.querySelector('#re').textContent = e.message || 'Weak network. Try again.'; }
+  };
+}
+
 async function handleNotices() {
   const n = st.me.notices || []; if (!n.length) return;
   await backend.ack(n.map(x => x.id));
   for (const x of n) {
     if (x.kind === 'approved') showResult({ status: 'approved', points: x.points, parts: x.parts, streak: x.streak, special: x.special }, null, true);
     else if (x.kind === 'rejected') toast('❌ ' + T.rejected, 4000);
+    else if (x.kind === 'dropcaught') { confetti(30); play('cash'); buzz([40, 40, 80]); toast(ROAM.dropCaught(x.nick, x.points, x.full), 5000); }
     else if (x.kind === 'callsearned') { confetti(30); play('cash'); toast('📣 +1 call earned for helping the crowd!', 4000); }
     else if (x.kind === 'callsgranted') { confetti(40); play('cash'); toast(`✅ +${x.calls} calls added. Go call the crowd!`, 4500); }
     else if (x.kind === 'callsdenied') toast('We couldn’t match that payment. Tap 💬 and tell us, we’ll sort it.', 5000);

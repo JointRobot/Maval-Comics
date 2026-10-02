@@ -150,9 +150,68 @@ export class LocalBackend {
     };
   }
 
+  // ---------- roaming Gyanus (wild spawns that hop between zones + gyanus dropped by players)
+  roamTick(db) {
+    db.roamers = db.roamers || []; const t = now(); let ch = false;
+    for (const r of db.roamers) if (r.active && (r.endsAt < t || r.catches.length >= r.slots)) { r.active = false; ch = true; }
+    const open = ZONES.filter(z => db.zones[z.id]?.crowd !== 'closed');
+    for (const r of db.roamers) if (r.active && r.kind !== 'player' && r.hopAt && r.hopAt < t) {
+      const to = open.filter(z => z.id !== r.zone); if (to.length) r.zone = to[Math.floor(Math.random() * to.length)].id;
+      r.hops++; r.hopAt = t + (70 + Math.random() * 50) * 1000; ch = true;
+    }
+    const wild = db.roamers.filter(r => r.active && r.kind !== 'player');
+    if (!db.settings.paused && !db.settings.ended && db.settings.roam !== false && wild.length < 2 && !db.roamers.some(r => r.kind !== 'player' && t - r.bornAt < 25e3) && open.length) {
+      const free = open.filter(z => !wild.some(r => r.zone === z.id)), z = (free.length ? free : open)[Math.floor(Math.random() * (free.length || open.length))];
+      const gold = Math.random() < 0.12;
+      db.roamers.push({ id: uid('w_'), kind: gold ? 'golden' : 'wild', zone: z.id, hint: '', by: null, slots: gold ? 2 : 4, bornAt: t, endsAt: t + (gold ? 150 : 240) * 1000, hopAt: t + (70 + Math.random() * 50) * 1000, hops: 0, active: true, catches: [] });
+      ch = true;
+    }
+    for (const r of wild) if (r.kind === 'wild' && r.slots - r.catches.length > 1 && Math.random() < 0.04) { r.catches.push({ p: 'bot' + r.catches.length, ord: r.catches.length + 1 }); ch = true; } // other phones, simulated
+    db.roamers = db.roamers.filter(r => r.active || t - r.endsAt < 600e3).slice(-60);
+    if (ch) this.save(db, true);
+  }
+  roamView(db, me) {
+    const t = now();
+    return (db.roamers || []).filter(r => r.active && r.endsAt > t && r.catches.length < r.slots).map(r => ({
+      id: r.id, kind: r.kind, zone: r.zone, hint: r.hint, slots: r.slots, left: r.slots - r.catches.length, endsAt: r.endsAt, hops: r.hops,
+      by: r.by ? (db.players.find(p => p.id === r.by)?.nick || '?') : null, mine: !!me && r.by === me.id, got: !!me && r.catches.some(c => c.p === me.id), needCode: !!db.zones[r.zone]?.code }));
+  }
+  async catchRoam(id, code) {
+    const db = this.load(); const me = this.me(db); if (!me) throw new Error('Join first');
+    const no = (reason, x = {}) => ({ ok: false, reason, ...x }), t = now();
+    if (me.banned) return no('Your account is paused.');
+    if (db.settings.paused || db.settings.ended) return no('The hunt is paused right now.');
+    if (t - (me.lastCatchAt || 0) < 4000) return no('Easy! One catch at a time.');
+    const r = (db.roamers || []).find(x => x.id === id && x.active);
+    if (!r || r.endsAt < t) return no('He dipped! Check the map for the next one.', { gone: true });
+    if (r.by === me.id) return no('You hid this one. Let others find it.');
+    if (r.catches.some(c => c.p === me.id)) return no('You already got this one.');
+    const zc = db.zones[r.zone]?.code; if (zc && String(code || '').trim().toUpperCase() !== zc) return no('Wrong zone code. Look for the Gyanu poster in that zone.', { needCode: true });
+    const ord = r.catches.length; if (ord >= r.slots) { r.active = false; this.save(db); return no('Too slow, he is all caught out!', { gone: true }); }
+    const pts = RULES.roamPts[r.kind][ord];
+    r.catches.push({ p: me.id, ord: ord + 1 }); me.score += pts; me.roamCatches = (me.roamCatches || 0) + 1; me.lastCatchAt = t;
+    if (ord + 1 >= r.slots) r.active = false;
+    const dr = r.by && db.players.find(p => p.id === r.by);
+    if (dr) { const full = ord + 1 >= r.slots, bp = RULES.dropperPerCatch + (full ? RULES.dropperFullBonus : 0); dr.score += bp; dr.notices = [...(dr.notices || []), { id: uid('n_'), kind: 'dropcaught', nick: me.nick, points: bp, full }]; }
+    this.save(db);
+    return { ok: true, points: pts, order: ord + 1, slots: r.slots, kind: r.kind, zone: r.zone };
+  }
+  async dropRoam(zone, hint) {
+    const db = this.load(); const me = this.me(db); if (!me) throw new Error('Join first');
+    const no = reason => ({ ok: false, reason }), t = now(); db.roamers = db.roamers || [];
+    if (me.banned) return no('Your account is paused.');
+    if (db.settings.paused || db.settings.ended) return no('The hunt is paused right now.');
+    if (!ZONES.some(z => z.id === zone) || db.zones[zone]?.crowd === 'closed') return no('Pick an open zone.');
+    if (db.roamers.some(r => r.by === me.id && r.active && r.endsAt > t)) return no('Your Gyanu is still out there. Wait for it to be found or fade.');
+    if (db.roamers.filter(r => r.by === me.id && t - r.bornAt < 3600e3).length >= RULES.dropsPerHour) return no('Three drops an hour. Come back later, legend.');
+    const s = cleanSlogan(hint || ''); if (s.error) return no(s.error.replace('placard', 'hint'));
+    db.roamers.push({ id: uid('d_'), kind: 'player', zone, hint: (s.slogan || '').slice(0, 40), by: me.id, slots: 4, bornAt: t, endsAt: t + RULES.dropLifeSec * 1000, hopAt: null, hops: 0, active: true, catches: [] });
+    this.save(db); return { ok: true };
+  }
+
   async state() {
     const db = this.load();
-    this.purgeOld(db);
+    this.purgeOld(db); this.roamTick(db);
     const me = this.me(db);
     if (me && now() - (me.lastSeen || 0) > 20e3) { me.lastSeen = now(); this.save(db, true); }
     const mySubs = me ? db.subs.filter(s => s.playerId === me.id && s.status !== 'void') : [];
@@ -171,11 +230,12 @@ export class LocalBackend {
       hype: this.hypeView(db, me?.id),
       stats: this.stats(db),
       zones: db.zones,
-      hunts,
+      hunts, roamers: this.roamView(db, me),
       me: me && {
         id: me.id, nick: me.nick, slogan: me.slogan, avatar: me.avatar, score: me.score, finds: me.finds, streak: me.streak, bestStreak: me.bestStreak,
         banned: me.banned, rank: (board.findIndex(r => r.id === me.id) + 1) || null, players: board.length,
         lastSubmitAt: me.lastSubmitAt, notices: me.notices || [], homeBest: me.homeBest || 0, punchBest: me.punchBest || 0, callsLeft: Math.max(0, RULES.callsPerPlayer + (me.callBonus || 0) - (me.calls || 0)), pendingCalls: (db.callReqs || []).filter(q => q.playerId === me.id && q.status === 'new').length,
+        roamCatches: me.roamCatches || 0, dropsLeft: Math.max(0, RULES.dropsPerHour - (db.roamers || []).filter(r => r.by === me.id && now() - r.bornAt < 3600e3).length),
         callCost: callCost(me.score), helps: me.helps || 0, earnedCalls: me.earnedCalls || 0, boughtCalls: me.boughtCalls || 0
       }
     };
@@ -537,6 +597,12 @@ export class LocalBackend {
       case 'feedbackMark': { const f = (db.feedback || []).find(x => x.id === a.id); if (f) f.status = a.status; break; }
       case 'feedbackDelete': db.feedback = (db.feedback || []).filter(x => x.id !== a.id); break;
       case 'purgePhotos': db.subs.forEach(s => { if (s.status !== 'pending') s.thumb = null; }); break;
+      case 'roamState': return { on: db.settings.roam !== false, zones: ZONES.map(z => ({ id: z.id, name: z.name, code: db.zones[z.id]?.code || null })),
+        roamers: (db.roamers || []).filter(r => r.active && r.endsAt > now()).map(r => ({ id: r.id, kind: r.kind, zone: r.zone, hint: r.hint, left: r.slots - r.catches.length, endsAt: r.endsAt, by: r.by ? P(r.by)?.nick : null })) };
+      case 'roamOn': db.settings.roam = !!a.on; break;
+      case 'roamRemove': (db.roamers || []).forEach(r => { if (r.id === a.id) r.active = false; }); break;
+      case 'roamClear': (db.roamers || []).forEach(r => (r.active = false)); break;
+      case 'zoneCode': db.zones[a.id] = { ...(db.zones[a.id] || { crowd: 'ok' }), code: String(a.code || '').trim().toUpperCase().slice(0, 8) || null }; break;
       case 'factoryReset': localStorage.removeItem(KEY); this.save(seed()); return true;
       default: throw new Error('Unknown action ' + action);
     }
@@ -608,6 +674,8 @@ export class SupabaseBackend {
   }
   async hype(level) { return this.rpc('gh_hype', { p_token: this.tok(), p_level: level }); }
   async homeScore(n) { return this.rpc('gh_home_score', { p_token: this.tok(), p_score: n }); }
+  async catchRoam(id, code) { return this.rpc('gh_roam_catch', { p_token: this.tok(), p_roam: id, p_code: String(code || '') }); }
+  async dropRoam(zone, hint) { const h = cleanSlogan(hint || ''); if (h.error) return { ok: false, reason: h.error.replace('placard', 'hint') }; return this.rpc('gh_roam_drop', { p_token: this.tok(), p_zone: zone, p_hint: h.slogan || '' }); }
   async buyCall() { return this.rpc('gh_buy_call', { p_token: this.tok() }); }
   async requestCalls(ref) { return this.rpc('gh_request_calls', { p_token: this.tok(), p_ref: String(ref || '') }); }
   async callCrowd(kind, text) { const s = cleanSlogan(text); if (s.error) return { ok: false, reason: s.error.replace('placard', 'chant') }; return this.rpc('gh_call_crowd', { p_token: this.tok(), p_kind: kind, p_text: s.slogan }); }
@@ -626,7 +694,8 @@ export class SupabaseBackend {
   async deleteMe() { await this.rpc('gh_delete_me', { p_token: this.tok() }); localStorage.removeItem(ME); }
   async admin(action, a = {}) {
     const { pin, ...rest } = a;
-    return this.rpc('gh_admin', { p_key: String(pin), p_action: action, p_args: rest });
+    const fn = ['roamState', 'roamOn', 'roamRemove', 'roamClear', 'zoneCode'].includes(action) ? 'gh_admin2' : 'gh_admin';
+    return this.rpc(fn, { p_key: String(pin), p_action: action, p_args: rest });
   }
 }
 

@@ -353,3 +353,14 @@ html,body{position:fixed;inset:0;width:100%;height:100%;overflow:hidden;overscro
 .hdots{display:flex;align-items:center;gap:6px;margin:0 0 10px;font-size:12.5px;font-weight:800;color:#555}
 .hdot{width:18px;height:18px;border-radius:50%;border:2.5px solid var(--ink);background:#fff;display:inline-block}.hdot.on{background:var(--pink)}
 .hdots span{margin-left:4px}
+
+/* ---- roaming gyanus ---- */
+.tag.roam-wild{background:#00C2B0;color:var(--ink)}.tag.roam-golden{background:#FFC21A;color:var(--ink)}.tag.roam-player{background:#FF8A1F;color:var(--ink)}
+.roamline{font-size:13px;margin:2px 0 4px;font-weight:600}
+.tbar{position:relative;width:min(320px,86%);height:46px;background:#2a2733;border:3px solid #fff;border-radius:999px;overflow:hidden;margin:6px 0}
+.tzone{position:absolute;top:0;bottom:0;background:#3BB273;opacity:.95;border-left:3px solid #fff;border-right:3px solid #fff}
+.tmark{position:absolute;top:3px;width:36px;height:36px;font-size:26px;line-height:36px;text-align:center}
+.tbar.shake{animation:shk .3s}
+@keyframes shk{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.coach{cursor:pointer}
+@media (max-height:700px){.coach{opacity:.94;max-width:calc(100% - 16px);font-size:12px;padding:5px 10px}}

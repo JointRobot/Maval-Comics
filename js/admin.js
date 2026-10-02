@@ -8,7 +8,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const zn = id => ZONES.find(z => z.id === id)?.name || id;
 const ci = id => SCENE_CATS.find(c => c.id === id)?.icon || '?';
 const ago = t => { if (!t) return '—'; const s = Math.round((Date.now() - t) / 1000); return s < 60 ? `${s}s` : s < 3600 ? `${Math.round(s / 60)}m` : `${Math.round(s / 3600)}h`; };
-let pin = sessionStorage.getItem('gh_pin') || '', tab = 'live', S = null, FB = [], PAY = [], fbKind = '', fbStatus = '', editing = null, pendingRefs = [];
+let pin = sessionStorage.getItem('gh_pin') || '', tab = 'live', S = null, FB = [], PAY = [], fbKind = '', fbStatus = '', editing = null, pendingRefs = [], RM = null;
 const toast = m => { const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 2000); };
 const act = async (a, p = {}, msg) => { try { await backend.admin(a, { pin, ...p }); if (msg) toast(msg); await load(); } catch (e) { toast('⚠️ ' + e.message); } };
 
@@ -29,7 +29,7 @@ $('#pauseBtn').onclick = () => {
 };
 
 async function load() {
-  try { S = await backend.admin('state', { pin }); FB = await backend.admin('feedback', { pin }).catch(() => FB); PAY = await backend.admin('callReqs', { pin }).catch(() => PAY); } catch (e) { toast(e.message); return; }
+  try { S = await backend.admin('state', { pin }); FB = await backend.admin('feedback', { pin }).catch(() => FB); PAY = await backend.admin('callReqs', { pin }).catch(() => PAY); RM = await backend.admin('roamState', { pin }).catch(() => RM); } catch (e) { toast(e.message); return; }
   const waiting = PAY.filter(q => q.status === 'new').length; $('[data-t=pay]').textContent = `PAYMENTS${waiting ? ` (${waiting})` : ''}`;
   const fresh = FB.filter(f => f.status === 'new').length; $('[data-t=inbox]').textContent = `FEEDBACK${fresh ? ` (${fresh})` : ''}`;
   const pb = $('#pauseBtn'); pb.textContent = S.settings.paused ? '▶ RESUME HUNT' : '⏸ PAUSE'; pb.className = 'b ' + (S.settings.paused ? 'g' : 'r');
@@ -167,6 +167,10 @@ const wire = {
   crowd() {
     document.querySelectorAll('[data-z]').forEach(b => (b.onclick = () => act('zone', { id: b.dataset.z, crowd: b.dataset.c }, `${zn(b.dataset.z)}: ${b.dataset.c}`)));
     document.querySelectorAll('[data-rdel]').forEach(b => (b.onclick = () => act('sceneDelete', { id: b.dataset.rdel }, 'Removed')));
+    $('#roamTog')?.addEventListener('click', () => act('roamOn', { on: !RM.on }, RM.on ? 'Roaming paused' : 'Roaming Gyanus ON'));
+    $('#roamClr')?.addEventListener('click', () => act('roamClear', {}, 'All roaming Gyanus removed'));
+    document.querySelectorAll('[data-rrm]').forEach(b => (b.onclick = () => act('roamRemove', { id: b.dataset.rrm }, 'Removed')));
+    document.querySelectorAll('[data-zcs]').forEach(b => (b.onclick = () => act('zoneCode', { id: b.dataset.zcs, code: document.querySelector(`[data-zci="${b.dataset.zcs}"]`).value }, 'Code saved')));
     $('#pinGo').onclick = () => act('scenePin', { cat: $('#pinCat').value, zone: $('#pinZone').value, note: $('#pinNote').value }, 'Official pin posted');
   },
   players() {
@@ -234,7 +238,14 @@ function crowd() {
   const crowded = S.scene.filter(r => r.cat === 'crowded');
   const zones = ZONES.map(z => { const c = S.zones[z.id]?.crowd || 'ok', n = crowded.filter(r => r.zone === z.id).length;
     return `<tr><td><b>${esc(z.name)}</b>${n ? ` <span class="tag final">⚠️ ${n} crowd report${n > 1 ? 's' : ''}</span>` : ''}</td><td class="zonebtns"><div class="row">${[['ok', 'g', 'OK'], ['busy', 'o', 'BUSY'], ['closed', 'r', 'CLOSED']].map(([k, cl, l]) => `<button class="b ${cl} sm${c === k ? ' on' : ''}" data-z="${z.id}" data-c="${k}">${l}</button>`).join('')}</div></td></tr>`; }).join('');
-  return `<div class="card"><h2>CROWD STATUS BY ZONE</h2><p class="mut" style="margin-bottom:8px">BUSY = warning on every map. CLOSED = hunts there disappear and photos there are refused. For a full stop, use ⏸ PAUSE.</p><table>${zones}</table></div>
+  const roam = !RM ? '' : `<div class="card"><h2>ROAMING GYANUS</h2>
+    <p class="mut" style="margin-bottom:8px">Wild Gyanus pop up by themselves, hop between zones and vanish after 4 catches. Players can also hide their own. Phones only poll every few seconds, so it is light on weak networks.</p>
+    <div class="row"><button class="b ${RM.on ? 'g' : 'r'}" id="roamTog">${RM.on ? '🟢 ROAMING IS ON (tap to pause spawns)' : '🔴 ROAMING IS OFF (tap to turn on)'}</button><button class="b o sm" id="roamClr">REMOVE ALL</button></div>
+    <table style="margin-top:8px">${RM.roamers.map(r => `<tr><td><b>${r.kind === 'player' ? '🎁' : r.kind === 'golden' ? '✨' : '🪳'} ${esc(zn(r.zone))}</b> ${esc(r.hint || '')}</td><td class="mut">${r.by ? 'by ' + esc(r.by) + ' · ' : ''}${r.left} left · ${Math.max(0, Math.round((r.endsAt - Date.now()) / 1000))}s</td><td><button class="b k sm" data-rrm="${r.id}">REMOVE</button></td></tr>`).join('') || '<tr><td class="mut">Nothing roaming right now.</td></tr>'}</table>
+    <h2 style="margin-top:14px;font-size:16px">OPTIONAL ZONE CODES</h2>
+    <p class="mut" style="margin-bottom:6px">Stick a poster with a short code (e.g. CHAI7) in a zone. Players must type it to catch a Gyanu there, so nobody catches from the sofa. Leave blank for no code.</p>
+    <table>${RM.zones.map(z => `<tr><td><b>${esc(z.name)}</b></td><td><input data-zci="${z.id}" maxlength="8" value="${esc(z.code || '')}" style="max-width:120px;text-transform:uppercase"></td><td><button class="b sm" data-zcs="${z.id}">SAVE</button></td></tr>`).join('')}</table></div>`;
+  return roam + `<div class="card"><h2>CROWD STATUS BY ZONE</h2><p class="mut" style="margin-bottom:8px">BUSY = warning on every map. CLOSED = hunts there disappear and photos there are refused. For a full stop, use ⏸ PAUSE.</p><table>${zones}</table></div>
     <div class="card"><h2>POST AN OFFICIAL PIN</h2><div class="row"><select id="pinCat" style="width:auto">${SCENE_CATS.map(c => `<option value="${c.id}">${c.icon} ${c.label}</option>`).join('')}</select><select id="pinZone" style="width:auto">${ZONES.map(z => `<option value="${z.id}">${z.name}</option>`).join('')}</select><input id="pinNote" maxlength="60" placeholder="e.g. Free water refills here" style="flex:1;min-width:180px"><button class="b p sm" id="pinGo">POST</button></div></div>
     <div class="card"><h2>LIVE SCENE (${S.scene.length})</h2><table>${S.scene.map(r => `<tr><td>${ci(r.cat)}</td><td><b>${esc(zn(r.zone))}</b> ${esc(r.note)}</td><td class="mut">${r.official ? 'CREW' : esc(r.by)} · ${ago(r.createdAt)} · 👍${r.yes} ✋${r.gone}</td><td><button class="b k sm" data-rdel="${r.id}">REMOVE</button></td></tr>`).join('')}</table></div>`;
 }

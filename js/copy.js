@@ -183,12 +183,39 @@ export const TOUR = (nick, o = {}) => [
   { target: o.pin || '#map', title: 'STEP 1 · TAP THE PIN', text: 'See the pulsing pin with Gyanu’s face? That’s where he’s hiding. Tap it.', say: 'Step one. See the pulsing pin with Gyanu’s face? That is where he is hiding. Tap it.', sfx: 'pop' },
   { target: '#sheet', title: 'STEP 2 · READ THE HINT', text: 'Zone, points and a hint live here. Read it, then walk there. No running.', say: 'Step two. Read the hint, then walk to that spot. No running.' },
   { target: '#scanBtn', title: 'STEP 3 · SCAN FOR GYANU', text: 'Found the Gyanu print? Tap this, point the camera at it and shoot. Never people’s faces.', say: 'Step three. Found the Gyanu print? Tap this button, point the camera at it, and shoot. Never people’s faces.', sfx: 'whoosh' },
+  { emoji: '🪳', title: 'WILD GYANUS!', text: 'Gyanus pop up all over the map and run between zones. Only 4 people can catch each one. Tap a pin, walk there, and throw!', say: 'Wild Gyanus pop up all over the map and keep moving between zones. Only four people can catch each one. Tap a pin, walk there, and throw!', sfx: 'whoosh' },
   { target: '#wBtn', title: 'WAITING? PLAY!', text: 'WHACK, PUNCH or CALL THE CROWD while you walk. They all hit the leaderboard.', say: 'Waiting around? Whack, punch, or call the crowd while you walk.', sfx: 'pop' },
   { target: '.top .pts', title: 'YOUR POINTS', text: 'Faster finds and streaks = more points. They land up here.', say: 'Faster finds and streaks mean more points. They land up here.', sfx: 'cash' },
   { target: '#nav [data-v=score]', title: 'CLIMB THE BOARD', text: 'Leaderboards: everyone, today, nearby, whack and punch.', say: 'Climb the leaderboard. Everyone, today, nearby, whack and punch.' },
   { target: '#nav [data-v=scene]', title: 'THE SCENE', text: 'Food, water, toilets, shade, charging. Spot something useful? Drop a pin.', say: 'The scene tab. Food, water, toilets, shade, charging. Spot something useful? Drop a pin.' },
   { emoji: '🚶', title: 'GO FIND HIM!', text: 'Tap the pulsing pin to start. Walk, don’t run, and respect people’s privacy.', say: 'Go find him! Tap the pulsing pin to start. Walk, don’t run, and respect people’s privacy.', sfx: 'horn' }
 ];
+
+// ---- Roaming Gyanus (wild spawns + player drops)
+export const ROAM = {
+  kindTag: { wild: '🪳 WILD GYANU', golden: '✨ GOLDEN WILD', player: '🎁 PLAYER DROP' },
+  nextPts: (pts, n) => `Catch #${n} pays +${pts}. Earlier catchers earn more!`,
+  mineNote: 'You hid this one. You earn points every time someone catches it.',
+  gotNote: 'You got this one. Look for the next!',
+  dropAppear: (by, z) => `🎁 ${by || 'A player'} hid a Gyanu at ${z}! 4 spots only`,
+  wildAppear: (z, n) => `🪳 A wild Gyanu appeared at ${z}! First ${n} catchers win`,
+  goldenAppear: z => `✨ GOLDEN Gyanu at ${z}! Only 2 can catch him. Go go go!`,
+  hopped: (a, b) => `🔀 He ran from ${a} to ${b}! Change of plan`,
+  lastSpot: z => `⚠️ Last spot left at ${z}. Quick!`,
+  gone: '🪳 He dipped! Eyes on the map for the next one',
+  catchTitle: 'CATCH HIM!', catchSub: 'Tap THROW when Gyanu is in the green. Miss and he gets faster.',
+  catchCode: z => `You must be there. Find the Gyanu poster at ${z} and type its code.`,
+  catchHint: 'Watch the green zone…', needCodeMsg: 'Type the zone code first (it is on the poster there).',
+  miss: ['So close! Again', 'He slipped, try again', 'Too early. Breathe, throw', 'Gyanu laughed at you', 'Missed by a mooch'],
+  winTitle: n => (n === 1 ? 'FIRST CATCH!' : `CAUGHT #${n}!`),
+  winSub: left => `${left} more spot${left === 1 ? '' : 's'} left. Tell your friends before he is gone`,
+  lastCatcher: 'You took the last spot. Gyanu is gone from the map!', winNext: 'FIND THE NEXT ONE',
+  dropTitle: 'HIDE YOUR GYANU', dropSub: 'Drop him where you are. 4 players can catch him. You earn +10 each time!',
+  hints: ['Near the chai stall', 'Behind the big banner', 'Look up!', 'By the water point', 'Near the stage steps'],
+  noDrops: 'Three drops an hour is the limit. Go catch some instead!', alreadyOut: 'Your Gyanu is still out there. Wait till he is found.',
+  dropped: '🎁 Hidden! Stay nearby and watch the map. You earn +10 per catch',
+  dropCaught: (nick, pts, full) => `🎁 ${nick} caught your Gyanu! +${pts}${full ? ' (all 4 found him: bonus!)' : ''}`
+};
 
 const A = ['SODA', 'LEMON', 'GINGER', 'CHAI', 'VADA', 'POP', 'MASALA', 'CUTTING', 'SAMOSA', 'NIMBU', 'JALEBI', 'BHEL'];
 const B = ['POP', 'WALA', 'BRO', 'BEAST', 'GANG', 'GOAT', 'PRO', 'KING', 'CHAD', 'ZILLA', 'NINJA', 'FAN'];

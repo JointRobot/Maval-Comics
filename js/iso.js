@@ -511,8 +511,9 @@ export class IsoMap {
   drawHunts(ctx, P, S, t) {
     this.huntHits = [];
     for (const h of this.hunts) {
-      const [x, y] = this.zoneAnchor(h.zone);
-      const col = h.type === 'golden' ? '#FFC21A' : h.type === 'final' ? '#FF2A3D' : COL.pink;
+      let [x, y] = this.zoneAnchor(h.zone);
+      if (h.roam) { const hs = [...String(h.id)].reduce((a, c) => a + c.charCodeAt(0), 0); x += 2.4 + ((hs % 3) - 1) * 1.7; y += 2.2 + (((hs >> 2) % 3) - 1) * 1.3; }
+      const col = h.roam ? (h.kind === 'golden' ? '#FFC21A' : h.kind === 'player' ? '#FF8A1F' : '#00C2B0') : h.type === 'golden' ? '#FFC21A' : h.type === 'final' ? '#FF2A3D' : COL.pink;
       const [gx, gy] = P(x, y, 0);
       if (!h.found) for (let i = 0; i < 3; i++) { // radar rings on the ground
         const k = ((t * 0.7 + i / 3) % 1), R = (1.2 + k * 6) * S;
@@ -522,10 +523,19 @@ export class IsoMap {
       const lift = 7.5 + Math.sin(t * 2.4 + x) * 0.6;
       const [mx, my] = P(x, y, lift);
       ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(mx, my + 10); ctx.stroke();
-      const sz = Math.max(30, S * 5.4) * (this.selected === h.id ? 1.18 : 1);
+      const sz = Math.max(30, S * 5.4) * (h.roam ? 0.88 : 1) * (this.selected === h.id ? 1.18 : 1);
       ctx.fillStyle = h.found ? '#3BB273' : col; ctx.strokeStyle = INK; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.arc(mx, my, sz * 0.62, 0, 7); ctx.fill(); ctx.stroke();
       if (this.gyanuImg.complete && this.gyanuImg.naturalWidth) ctx.drawImage(this.gyanuImg, mx - sz / 2, my - sz * 0.55, sz, sz * 1.03);
+      if (h.roam) { // slots-left badge + time-left ring so people can race each other
+        const bx = mx + sz * 0.5, by = my - sz * 0.5, br = Math.max(10, sz * 0.26);
+        ctx.fillStyle = INK; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(bx, by, br, 0, 7); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#FFD400'; ctx.font = `${br * 1.15}px Bungee, Impact, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(h.left), bx, by + 1); ctx.textBaseline = 'alphabetic';
+        const frac = Math.max(0, Math.min(1, (h.endsAt - (this.nowFn ? this.nowFn() : Date.now())) / 180000));
+        ctx.beginPath(); ctx.arc(mx, my, sz * 0.7, -Math.PI / 2, -Math.PI / 2 + frac * 6.283); ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke();
+        if (h.kind === 'player') { ctx.font = `${sz * 0.34}px sans-serif`; ctx.textAlign = 'center'; ctx.fillText('🎁', mx - sz * 0.5, my - sz * 0.45); }
+        if (h.kind === 'golden') { ctx.font = `${sz * 0.34}px sans-serif`; ctx.textAlign = 'center'; ctx.fillText('✨', mx - sz * 0.5, my - sz * 0.45); }
+      }
       if (h.found) { ctx.fillStyle = '#fff'; ctx.font = `${sz * 0.42}px Bungee, Impact, sans-serif`; ctx.textAlign = 'center'; ctx.fillText('✓', mx + sz * 0.45, my - sz * 0.35); }
       if (this.selected === h.id && !h.found) { // the pin to go for: pulsing white halo + a name tag, so it can't be missed
         const k2 = (Math.sin(t * 5) + 1) / 2;

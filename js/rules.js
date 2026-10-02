@@ -19,7 +19,8 @@ export const RULES = {
 
   // Hype moments (chant / shake / statue): everyone who joined a won moment gets this
   hypePoints: 20,
-  callsPerPlayer: 5, callCooldownSec: 60, callGapSec: 15, callDurSec: 30, callBonusPerPhone: 1, callBonusCap: 40, callHelpsPer: 3, callEarnCap: 5, callBuyCap: 3, callBuyMin: 60, callBuyShare: 0.55, // 'Call the crowd': every player gets 5 calls
+  callsPerPlayer: 5, callCooldownSec: 60, callGapSec: 15, callDurSec: 30, callBonusPerPhone: 1, callBonusCap: 40, callHelpsPer: 3, callEarnCap: 5, callBuyCap: 3, callBuyMin: 60, callBuyShare: 0.55,
+  roamPts: { wild: [40, 25, 15, 10], golden: [150, 60], player: [30, 20, 15, 10] }, dropperPerCatch: 10, dropperFullBonus: 20, dropsPerHour: 3, dropLifeSec: 300, // 'Call the crowd': every player gets 5 calls
   hypeGoalPerPhone: 8,      // meter units each joined phone must add on average (1 unit ≈ 1.5 s at full power)
   // The Scene (crowd-sourced info)
   reportPoints: 5, reportCapPerHour: 6, confirmPoints: 2, sceneTTLMin: 45,
