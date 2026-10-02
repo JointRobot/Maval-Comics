@@ -209,7 +209,7 @@ function renderStatus(offline) {
   const s = st?.stats, chips = [];
   if (offline) chips.push(`<span class="chip alert">📶 weak network — retrying</span>`);
   if (st?.settings.finalLive) chips.push(`<span class="chip alert">FINAL GYANU LIVE</span>`);
-  if (s) chips.push(`<span class="chip">🟢 ${s.online} hunting</span>`, `<button class="chip crowdchip" data-crowd="1">🪧 ${fmt(s.crowd || 0)} in the crowd</button>`);
+  if (s) chips.push(`<span class="chip">🟢 ${s.online} hunting</span>`, `<button class="chip crowdchip" data-crowd="1">🪧 SEE PLACARDS</button>`);
   if (s?.busy?.length) chips.push(`<span class="chip alert">⚠️ busy: ${s.busy.map(z => ZONES.find(q => q.id === z)?.short).join(', ')}</span>`);
   $('#status').innerHTML = chips.join('');
 }
@@ -795,7 +795,7 @@ async function openCrowd() {
 async function landingCrowd() {
   try {
     const c = await backend.crowd(); if (!c?.total) return;
-    const l = $('#crowdLink'); l.style.display = ''; l.textContent = `🪧 ${fmt(c.total)} already in the crowd · peek at the placards`; l.onclick = openCrowd;
+    const l = $('#crowdLink'); l.style.display = ''; l.textContent = `🪧 SEE PLACARDS`; l.onclick = openCrowd;
   } catch {}
 }
 
