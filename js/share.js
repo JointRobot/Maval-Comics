@@ -3,6 +3,7 @@ import { CONFIG } from './config.js';
 
 const loadImg = src => new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = src; });
 
+const gameUrl = () => { try { return new URL('./', location.href).href; } catch { return location.href; } };
 export async function makeCard({ nick, slogan, finds, score, rank, homeBest }) {
   await document.fonts?.load('80px Bungee').catch(() => {});
   const W = 1080, H = 1350, c = document.createElement('canvas');
@@ -34,15 +35,17 @@ export async function makeCard({ nick, slogan, finds, score, rank, homeBest }) {
   }
   x.font = F(46); x.fillStyle = '#fff'; x.textAlign = 'center'; x.fillText(`— ${nick} —`, W / 2, 1255);
   x.font = F(30); x.fillStyle = '#FFD400'; x.fillText('GYANU HUNT', W / 2, 1300);
-  x.font = 'bold 24px system-ui, sans-serif'; x.fillStyle = 'rgba(255,255,255,.8)'; x.fillText(CONFIG.credit || '', W / 2, 1336);
+  x.font = 'bold 26px system-ui, sans-serif'; x.fillStyle = '#fff'; x.fillText('PLAY: ' + gameUrl().replace(/^https?:\/\//, '').replace(/\/$/, ''), W / 2, 1338);
   return new Promise(r => c.toBlob(r, 'image/png'));
 }
 
 export async function shareCard(data) {
   const blob = await makeCard(data);
   const file = new File([blob], 'gyanu-hunt.png', { type: 'image/png' });
-  const text = `I found Gyanu ${data.finds} times — ${data.score} points. Can you spot him? #GyanuHunt`;
-  if (navigator.canShare?.({ files: [file] })) { try { await navigator.share({ files: [file], text }); return 'shared'; } catch { return 'cancelled'; } }
+  const url = gameUrl();
+  const text = `I found Gyanu ${data.finds} time${data.finds === 1 ? '' : 's'}: ${data.score} points. Can you spot him? Play: ${url} #GyanuHunt`; // the link rides in the text, because many apps drop a separate url field when a picture is attached
+  if (navigator.canShare?.({ files: [file] })) { try { await navigator.share({ files: [file], text, title: 'Gyanu Hunt', url }); return 'shared'; } catch (e) { if (e?.name === 'AbortError') return 'cancelled'; try { await navigator.share({ files: [file], text }); return 'shared'; } catch { return 'cancelled'; } } }
+  try { await navigator.clipboard?.writeText(text); } catch {}
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'gyanu-hunt.png'; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   return 'downloaded';

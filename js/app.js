@@ -527,7 +527,7 @@ async function doShare(rank) {
   const me = st.me;
   if (!rank) rank = (await backend.leaderboard('global')).mine?.rank;
   const r = await shareCard({ nick: me.nick, slogan: me.slogan, finds: me.finds, score: me.score, rank, homeBest: me.homeBest });
-  if (r === 'downloaded') toast('Card saved — post it, flex it.');
+  if (r === 'downloaded') toast('Card saved. Caption + game link copied: paste both when you post.', 4500);
 }
 
 // ---------------------------------------------------------------- hype moments
