@@ -57,7 +57,7 @@ function confetti(n = 60) {
 // ---------------------------------------------------------------- landing + join
 function fillStatic() {
   $('#edition').textContent = CONFIG.edition; $('#topEd').textContent = CONFIG.edition;
-  $('#landSub').textContent = T.sub; $('#playBtn').textContent = T.play; $('#homeLink').textContent = '🔨 WHACK-A-GYANU'; $('#landSafety').textContent = T.safety;
+  $('#landSub').textContent = T.sub; $('#playBtn').textContent = T.play; $('#landSafety').textContent = T.safety;
   $('#joinTitle').textContent = T.joinTitle; $('#joinHelp').textContent = T.joinHelp;
   $('#sloganTitle').textContent = T.sloganTitle; $('#sloganHelp').textContent = T.sloganHelp; $('#sloganCustom').placeholder = T.sloganPh;
   $('#otpTitle').textContent = T.otpTitle; $('#otpHelp').textContent = T.otpHelp; $('#otpSend').textContent = T.otpSend;
@@ -817,7 +817,6 @@ function boot() {
   const back = !!backend.meId(); // returning players still see the start screen, and tap to continue (it used to flash past)
   if (back) $('#playBtn').textContent = 'CONTINUE THE HUNT';
   $('#playBtn').onclick = () => (back ? enterGame() : showJoin(false));
-  $('#homeLink').onclick = () => (back ? (enterGame(), setTimeout(startWhack, 700)) : showJoin(true));
   $('#status').addEventListener('click', e => { if (e.target.closest('[data-crowd]')) openCrowd(); else if (e.target.closest('[data-call]')) openCall(); });
   landingCrowd();
   $('#introBtn').onclick = () => runTour(INTRO, { autoChoice: true, doneLabel: 'LET’S PLAY' });
