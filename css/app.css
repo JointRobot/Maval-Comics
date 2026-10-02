@@ -266,11 +266,16 @@ input.field:focus{box-shadow:0 0 0 4px var(--yellow)}
 
 /* ---------- punching bag */
 .bagwrap{display:flex;flex-direction:column;align-items:center;transform-origin:50% 0}
-.bagrope{width:6px;height:46px;background:var(--ink);border-radius:3px}
+.bagrope{width:7px;height:90px;background:repeating-linear-gradient(180deg,#E8DFC8 0 6px,#8C7B5A 6px 9px);border:2px solid var(--ink);border-radius:3px;position:relative}
+.bagrope:before{content:"";position:absolute;left:-14px;top:-12px;width:31px;height:14px;background:#CFC6B8;border:3px solid var(--ink);border-radius:8px}
 .bag{width:150px;height:230px;border:4px solid var(--ink);border-radius:30px 30px 44px 44px;background:linear-gradient(90deg,#C81E4B,#FF2E88 45%,#C81E4B);box-shadow:6px 6px 0 var(--ink);display:flex;align-items:center;justify-content:center;padding:0;touch-action:manipulation;transform-origin:50% -46px;cursor:pointer}
 .bag img{width:96px;pointer-events:none;-webkit-user-drag:none}
-.big2 .bag{width:200px;height:300px}.big2 .bag img{width:128px}
-.bag.swing{animation:bagswing .28s ease-out}
+.big2 .bag{width:190px;height:280px}.big2 .bag img{width:128px}
+.glove{position:absolute;font-size:90px;line-height:90px;font-style:normal;pointer-events:none;z-index:5;animation:gloveR .24s ease-out forwards}
+.glove.fromL{animation-name:gloveL}
+@keyframes gloveR{0%{transform:translateX(190px) rotate(-10deg);opacity:.2}45%{transform:translateX(18px) rotate(0);opacity:1}100%{transform:translateX(120px);opacity:0}}
+@keyframes gloveL{0%{transform:translateX(-190px) scaleX(-1) rotate(-10deg);opacity:.2}45%{transform:translateX(-18px) scaleX(-1) rotate(0);opacity:1}100%{transform:translateX(-120px) scaleX(-1);opacity:0}}
+.bagwrap.big2{will-change:transform}
 @keyframes bagswing{0%{transform:rotate(0)}25%{transform:rotate(9deg) scale(.97)}60%{transform:rotate(-5deg)}100%{transform:rotate(0)}}
 .punchov{justify-content:center}.punchhud{position:absolute;left:12px;right:12px;top:12px;display:flex}
 .punchhud .chip{background:var(--ink);color:var(--yellow);font:20px var(--display);padding:6px 14px}

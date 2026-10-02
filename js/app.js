@@ -900,13 +900,26 @@ function runPunch() {
   const o = layer(`<div class="punchhud"><span class="chip" id="pT">⏱ 15s</span><span class="chip" id="pN" style="margin-left:auto">🥊 0</span></div>
     <div class="bagwrap big2"><div class="bagrope"></div><button class="bag" id="bag" aria-label="Punch the bag"><img src="img/gyanu.svg" alt="" draggable="false"></button></div>
     <p class="small" id="pHint" style="margin-top:12px">TAP THE BAG. TIMER STARTS ON YOUR FIRST PUNCH.</p>`, 'punchov');
+  const wrap = o.querySelector('.bagwrap'), pend = { a: 0, w: 0, sq: 0 }; // pendulum: angle a, angular speed w, damped, pivoting at the rope's top
+  let lastT = performance.now(), pRaf = 0;
+  const physics = now => {
+    const dt = Math.min(0.033, (now - lastT) / 1000); lastT = now;
+    pend.w += (-62 * Math.sin(pend.a) - 2.4 * pend.w) * dt; pend.a += pend.w * dt; pend.sq *= 0.82;
+    wrap.style.transform = `rotate(${(pend.a * 57.3).toFixed(2)}deg) scale(${(1 - pend.sq * 0.04).toFixed(3)})`;
+    pRaf = requestAnimationFrame(physics);
+  };
+  pRaf = requestAnimationFrame(physics);
   const bag = o.querySelector('#bag'), N = o.querySelector('#pN'), T0 = o.querySelector('#pT');
   const words = ['POW', 'BAM', 'THWACK', 'BONK', 'WHAM', 'OOF'];
   const hit = e => {
     if (over) return; e.preventDefault();
     if (!t0) { t0 = performance.now(); o.querySelector('#pHint').textContent = 'GO GO GO!'; tick = setInterval(upd, 100); setTimeout(finish, DUR); }
     n++; N.textContent = '🥊 ' + n; if (n === 1) sayHi(GYANU_VOICE.ask, { rate: 1, pitch: 1.4 }); else sayHi(GYANU_VOICE.chant);
-    bag.classList.remove('swing'); void bag.offsetWidth; bag.classList.add('swing');
+    const side = n % 2 ? 1 : -1; // gloves alternate right / left; a punch from the right swings the bag left
+    pend.w += side * (0.9 + Math.random() * 0.4); pend.sq = 1;
+    const gl = document.createElement('i'); gl.className = 'glove ' + (side > 0 ? 'fromR' : 'fromL'); gl.textContent = '🥊';
+    const gr = bag.getBoundingClientRect(); gl.style.left = (gr.left + gr.width / 2 - 45) + 'px'; gl.style.top = (gr.top + gr.height * (0.25 + Math.random() * 0.3) - 45) + 'px';
+    o.appendChild(gl); setTimeout(() => gl.remove(), 260);
     if (n % 3 === 0) play(n % 15 === 0 ? 'boom' : 'pop'); buzz(8);
     const w = document.createElement('i'); w.className = 'pw'; w.textContent = words[n % words.length];
     const r = bag.getBoundingClientRect(); w.style.left = (r.left + r.width / 2 + (Math.random() - .5) * 120) + 'px'; w.style.top = (r.top + r.height * .35 + (Math.random() - .5) * 60) + 'px';
@@ -915,13 +928,13 @@ function runPunch() {
   const upd = () => { const left = Math.max(0, Math.ceil((DUR - (performance.now() - t0)) / 1000)); T0.textContent = '⏱ ' + left + 's'; };
   bag.addEventListener('pointerdown', hit);
   const finish = async () => {
-    if (over) return; over = true; clearInterval(tick); o.remove();
+    if (over) return; over = true; clearInterval(tick); cancelAnimationFrame(pRaf); o.remove();
     let r = { ok: false, reason: '' }; try { r = await backend.punchScore(n); } catch (e) { r.reason = e.message; }
     confetti(n > 70 ? 70 : 20); play(n > 40 ? 'tada' : 'bruh');
     const d = layer(`<h2 class="big">${n} PUNCHES</h2><p class="d" style="font-size:20px;color:var(--pink);margin:10px 0">${esc(T.punchDone(n))}</p>
       ${r.ok ? `<p>${r.best ? '🏆 NEW PERSONAL BEST' : 'Your best: ' + r.punchBest}</p>` : `<p>${esc(r.reason)}</p>`}
       <div class="sw stack" style="margin-top:16px"><button class="btn pink" id="pA">RUN IT BACK</button><button class="btn" id="pS">📤 SHARE SCORE</button><button class="btn ghost" style="color:var(--ink)" id="pB">LEADERBOARD</button><button class="link" style="color:#fff" id="pC">back to the hunt</button></div>`);
-    d.querySelector('#pS').onclick = () => shareScore({ head: 'PUNCHING BAG', big: `${n} PUNCHES`, sub: 'IN 60 SECONDS', text: `I threw ${n} punches at Gyanu in 60 seconds.` });
+    d.querySelector('#pS').onclick = () => shareScore({ head: 'PUNCHING BAG', big: `${n} PUNCHES`, sub: 'IN 15 SECONDS', text: `I threw ${n} punches at Gyanu in 15 seconds.` });
     d.querySelector('#pA').onclick = () => { d.remove(); runPunch(); };
     d.querySelector('#pB').onclick = () => { d.remove(); scope = 'punch'; go('score'); };
     d.querySelector('#pC').onclick = () => { d.remove(); refresh(); };
