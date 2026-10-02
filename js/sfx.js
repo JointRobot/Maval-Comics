@@ -96,3 +96,17 @@ export function speak(text) {
     try { speechSynthesis.speak(u); } catch { fin(); }
   });
 }
+
+// Short Hindi lines for Gyanu to say while he is being whacked / punched / slapped. Never queues up: if he is still talking, skip.
+let hiBusy = 0;
+export function sayHi(text, { rate = 1.1, pitch = 1.5, gap = 0 } = {}) {
+  if (muted || !voice || !canSpeak()) return;
+  const t = performance.now(); if (hiBusy > t) return;
+  const u = new SpeechSynthesisUtterance(text);
+  const v = voices.find(v => /hi[-_]IN/i.test(v.lang)) || voices.find(v => /en[-_]IN/i.test(v.lang));
+  if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'hi-IN';
+  u.rate = rate; u.pitch = pitch; u.volume = 1;
+  hiBusy = t + 400 + text.length * 55 + gap;
+  u.onend = u.onerror = () => { hiBusy = performance.now() + gap; };
+  try { speechSynthesis.speak(u); } catch { hiBusy = 0; }
+}

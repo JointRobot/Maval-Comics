@@ -9,9 +9,9 @@ import { analyse, verify } from './verify.js';
 import { IsoMap } from './iso.js';
 import { micMeter, motionMeter, tapMeter } from './sensors.js';
 import { shareCard } from './share.js';
-import { play, combo, unlock, setMuted, sfxState, stopSpeak } from './sfx.js';
+import { play, combo, unlock, setMuted, sfxState, stopSpeak, sayHi } from './sfx.js';
 import { runTour, tourOpen } from './tour.js';
-import { ROAM, SHOUT } from './copy.js';
+import { ROAM, SHOUT, GYANU_VOICE } from './copy.js';
 import { openFeedback } from './feedback.js';
 
 // ---------------------------------------------------------------- helpers
@@ -455,7 +455,7 @@ function openCatch(r0) {
     code = (o.querySelector('#rcode')?.value || '').trim();
     if (need && !code) { msg.textContent = ROAM.needCodeMsg; return; }
     if (Math.abs(pos - zc) > zw / 2) { slapAt(pos, false); buzz(40); play('bruh'); speed = Math.min(3.2, speed + 0.25); setZone(); msg.textContent = pick(ROAM.miss); bar.classList.remove('shake'); void bar.offsetWidth; bar.classList.add('shake'); return; }
-    busy = true; cancelAnimationFrame(raf); slapAt(pos, true); play('pop'); msg.textContent = 'SLAP! Checking…';
+    busy = true; cancelAnimationFrame(raf); slapAt(pos, true); sayHi(GYANU_VOICE.chant); play('pop'); msg.textContent = 'SLAP! Checking…';
     try {
       const [res] = await Promise.all([backend.catchRoam(r.id, code), new Promise(k => setTimeout(k, 600))]);
       if (!res.ok) { busy = false; if (res.gone) { close(); toast('🪳 ' + res.reason, 4000); refresh(); return; } msg.textContent = res.reason || 'Nope. Try again.'; raf = requestAnimationFrame(t => { t0 = t - pos * 1000; loop(t); }); return; }
@@ -817,11 +817,11 @@ function runWhack() {
     hit(p) {
       if (p.hit) return; p.hit = true; p.hitAt = performance.now();
       if (p.kind === 'roach') { score = Math.max(0, score - 3); buzz([40, 30, 40]); toast(T.homeRoach, 900); }
-      else { score += p.kind === 'gold' ? 5 : 1; buzz(18); }
+      else { score += p.kind === 'gold' ? 5 : 1; buzz(18); sayHi(GYANU_VOICE.chant); }
       draw();
     }
   };
-  map.setState({ hunts: [] }); renderSheet();
+  map.setState({ hunts: [] }); renderSheet(); setTimeout(() => sayHi(GYANU_VOICE.ask, { rate: 1, pitch: 1.4, gap: 600 }), 500);
   const draw = () => {
     const left = Math.max(0, Math.ceil((DUR - (performance.now() - t0)) / 1000));
     bar.innerHTML = `<span class="chip">⏱ ${left}s</span><span class="chip" style="margin-left:auto">🔨 ${score}</span>`;
@@ -876,7 +876,7 @@ function runPunch() {
   const hit = e => {
     if (over) return; e.preventDefault();
     if (!t0) { t0 = performance.now(); o.querySelector('#pHint').textContent = 'GO GO GO!'; tick = setInterval(upd, 100); setTimeout(finish, DUR); }
-    n++; N.textContent = '🥊 ' + n;
+    n++; N.textContent = '🥊 ' + n; if (n === 1) sayHi(GYANU_VOICE.ask, { rate: 1, pitch: 1.4 }); else sayHi(GYANU_VOICE.chant);
     bag.classList.remove('swing'); void bag.offsetWidth; bag.classList.add('swing');
     if (n % 3 === 0) play(n % 15 === 0 ? 'boom' : 'pop'); buzz(8);
     const w = document.createElement('i'); w.className = 'pw'; w.textContent = words[n % words.length];

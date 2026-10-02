@@ -228,6 +228,9 @@ export const SHOUT = {
   again: 'RUN IT BACK', done: n => n >= 30 ? 'Lungs of steel. Chai break, legend.' : n >= 15 ? 'Good run. Hydrate.' : 'He got you. Louder next time.'
 };
 
+// Gyanu's voice lines (Hindi, spoken by the phone's own voice): the question, and the chant while he's getting hit.
+export const GYANU_VOICE = { ask: 'साझा करना चाहिए क्या?', chant: 'साझा साझा साझा' };
+
 const A = ['SODA', 'LEMON', 'GINGER', 'CHAI', 'VADA', 'POP', 'MASALA', 'CUTTING', 'SAMOSA', 'NIMBU', 'JALEBI', 'BHEL'];
 const B = ['POP', 'WALA', 'BRO', 'BEAST', 'GANG', 'GOAT', 'PRO', 'KING', 'CHAD', 'ZILLA', 'NINJA', 'FAN'];
 export const randomNick = () => (A[Math.floor(Math.random() * A.length)] + B[Math.floor(Math.random() * B.length)] + Math.floor(Math.random() * 90 + 10)).slice(0, 12);
