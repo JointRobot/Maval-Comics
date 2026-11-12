@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vanaushadhi — medicinal plant scanner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="lib/leaflet.css">
+<link rel="stylesheet" href="lib/MarkerCluster.css">
+<link rel="stylesheet" href="lib/MarkerCluster.Default.css">
+<meta name="theme-color" content="#1f4a30">
+<style>
+:root{--paper:#f3eee1;--card:#fbf8f0;--ink:#1c2a20;--mute:#6c7568;--leaf:#1f4a30;--leaf2:#3f7a4f;--line:#dcd4bf;--turm:#d6951a;--kum:#b23a26;--cos:#8a3f7a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{background:var(--paper);color:var(--ink);font:15px/1.45 "DM Sans",system-ui,sans-serif;display:flex;flex-direction:column}
+h1,h2,h3{font-family:Fraunces,Georgia,serif;margin:0;line-height:1.15}
+button{font:inherit;color:inherit;cursor:pointer}
+header{display:flex;align-items:center;gap:10px;padding:12px 16px 8px}
+header h1{font-size:22px;color:var(--leaf);flex:1}
+header h1 small{display:block;font:500 11px "DM Sans",sans-serif;color:var(--mute);letter-spacing:.08em;text-transform:uppercase}
+select{font:inherit;border:1px solid var(--line);background:var(--card);border-radius:10px;padding:6px 8px;color:var(--ink)}
+main{flex:1;overflow:auto;padding:4px 16px 20px;max-width:720px;width:100%;margin:0 auto}
+.view{display:none}.view.on{display:block}
+nav{display:flex;border-top:1px solid var(--line);background:var(--card);padding-bottom:env(safe-area-inset-bottom)}
+nav a{flex:1;text-align:center;padding:8px 0 7px;text-decoration:none;color:var(--mute);font-size:11px;font-weight:500}
+nav a span{display:block;font-size:22px;line-height:1.2;filter:grayscale(1);opacity:.6}
+nav a.on{color:var(--leaf);font-weight:700}nav a.on span{filter:none;opacity:1}
+.btn{border:0;border-radius:14px;padding:12px 16px;background:var(--leaf);color:#fff;font-weight:700}
+.btn.ghost{background:transparent;border:1.5px solid var(--leaf);color:var(--leaf)}
+.btn.sm{padding:7px 12px;border-radius:10px;font-size:13px}
+.btn:disabled{opacity:.5}
+/* scan */
+.shutter{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;margin:18px auto 14px;width:210px;height:210px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#4c8f5e,var(--leaf) 70%);color:#fff;border:8px solid #fff;box-shadow:0 0 0 2px var(--leaf),0 14px 30px -12px #1f4a3088;font-weight:700;font-size:17px}
+.shutter span{font-size:64px;line-height:1}
+#shoot,#pick{position:relative;overflow:hidden;cursor:pointer}#shoot input,#pick input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:200px}
+.hint{text-align:center;color:var(--mute);font-size:13px;margin:0 0 14px}
+.alt{display:flex;justify-content:center;margin-bottom:8px}
+.note{background:#fff7df;border:1px solid #ecd9a3;border-radius:12px;padding:9px 12px;font-size:13px;margin:10px 0}
+.busy{display:flex;align-items:center;gap:12px;padding:14px;background:var(--card);border:1px solid var(--line);border-radius:16px;margin-top:12px}
+.busy img{width:64px;height:64px;object-fit:cover;border-radius:12px}
+.spin{width:22px;height:22px;border:3px solid var(--line);border-top-color:var(--leaf);border-radius:50%;animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+/* plant card */
+.pc{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;margin-top:12px}
+.pc-top{display:flex;gap:12px;padding:14px;align-items:center}
+.pc-top img{width:84px;height:84px;object-fit:cover;border-radius:14px;flex:none}
+.pc-top h2{font-size:22px}
+.sci{font-style:italic;color:var(--mute);font-size:13px}
+.loc{font-size:15px;margin-top:2px}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:#e3eddc;color:var(--leaf)}
+.tag.c{background:#f0dff0;color:var(--cos)}.tag.w{background:#f7dcd5;color:var(--kum)}
+.warn{background:#f9e3dc;color:#7c2415;padding:9px 14px;font-size:13px;font-weight:500;display:flex;gap:8px}
+.sec{border-top:1px solid var(--line);padding:12px 14px}
+.sec h3{font-size:13px;font-family:"DM Sans",sans-serif;text-transform:uppercase;letter-spacing:.08em;color:var(--leaf);margin-bottom:8px}
+.sec.cos h3{color:var(--cos)}
+.medgrid{display:grid;grid-template-columns:76px 1fr;gap:10px;align-items:start}
+.use{padding:8px 0;border-bottom:1px dashed var(--line)}.use:last-child{border:0}
+.use b{font-size:15px}
+.use .bp{font-size:12px;color:var(--mute);font-weight:500}
+.flow{display:flex;align-items:center;gap:4px;margin:6px 0 2px;flex-wrap:wrap}
+.step{display:flex;flex-direction:column;align-items:center;min-width:50px;padding:5px 5px;border-radius:12px;background:#eef2e4;font-size:11px;font-weight:500}
+.step i{font-style:normal;font-size:24px;line-height:1.15}
+.arr{color:var(--leaf2);font-weight:700}
+.how{font-size:13px;color:#3c463d}
+.cosrow{display:flex;gap:10px;align-items:center;padding:6px 0}
+.cosrow i{font-style:normal;font-size:24px}
+.sw{width:26px;height:26px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--line);flex:none}
+.foot{font-size:11px;color:var(--mute);padding:8px 14px 12px;border-top:1px solid var(--line)}
+.acts{display:flex;gap:8px;flex-wrap:wrap;padding:12px 14px;border-top:1px solid var(--line)}
+/* figure */
+.fig{width:100%;display:block}
+.fig .b{fill:#d9cfb6;stroke:#d9cfb6;stroke-linecap:round;stroke-linejoin:round}
+.fig .hairf{fill:#5b4634}
+.fig .dot{fill:#fff;stroke:var(--leaf2);stroke-width:1.5}
+.fig .dot.on{fill:var(--turm);stroke:#7a4f00;stroke-width:2}
+.fig .ring{fill:none;stroke:var(--turm);stroke-width:2;opacity:.7;animation:pulse 1.6s ease-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes pulse{from{transform:scale(.6);opacity:.9}to{transform:scale(1.8);opacity:0}}
+.fig.sys .b{fill:#edc977;stroke:#edc977}
+.fig .hit{fill:transparent;cursor:pointer}
+/* body view */
+.seg{display:inline-flex;border:1.5px solid var(--leaf);border-radius:12px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:7px 14px;font-weight:700;color:var(--leaf)}
+.seg button.on{background:var(--leaf);color:#fff}
+.bodywrap{display:grid;grid-template-columns:minmax(150px,42%) 1fr;gap:12px;margin-top:10px;align-items:start}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:99px;padding:6px 10px;font-size:13px;font-weight:500;white-space:nowrap}
+.chip.on{background:var(--leaf);color:#fff;border-color:var(--leaf)}
+.chips .chip{white-space:normal;text-align:left;font-size:12px;padding:5px 9px}
+.chip em{font-style:normal;font-size:11px;opacity:.7;margin-left:3px}
+.row{display:flex;gap:10px;align-items:center;padding:10px 12px;background:var(--card);border:1px solid var(--line);border-radius:14px;margin-top:8px;width:100%;text-align:left}
+.row img,.row .ph{width:44px;height:44px;border-radius:10px;object-fit:cover;flex:none;background:#e3eddc;display:grid;place-items:center;font-size:22px}
+.row .t{flex:1;min-width:0}.row .t b{display:block}.row .t span{font-size:12px;color:var(--mute);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .n{font-size:12px;font-weight:700;color:var(--leaf);white-space:nowrap}
+.sub{font-size:13px;color:var(--mute);margin:12px 0 2px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+/* map */
+.mapbox{position:relative;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:#cfe3e6;margin-top:8px}
+#map{width:100%;height:min(62vh,560px);z-index:0}
+.cam{position:relative;border-radius:22px;overflow:hidden;background:#12201a;aspect-ratio:3/4;max-height:58vh;margin:6px auto 10px;width:100%;display:grid;place-items:center}
+.cam video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cam .start{position:relative;color:#fff;text-align:center;font-weight:700;font-size:17px;background:none;border:0;padding:30px}
+.cam .start span{display:block;font-size:64px}
+.cam .snap{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);width:74px;height:74px;border-radius:50%;border:5px solid #fff;background:#ffffff55;display:none}
+.cam.live .snap{display:block}.cam.live .start{display:none}
+.cam .gps{position:absolute;top:10px;left:10px;background:#0008;color:#fff;font-size:11px;font-weight:700;padding:4px 9px;border-radius:99px}
+.cam .frame{position:absolute;inset:14%;border:2px dashed #ffffff88;border-radius:18px;pointer-events:none;display:none}.cam.live .frame{display:block}
+body.has .cam{aspect-ratio:auto;height:150px}
+.gear{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:5px 9px;font-size:18px}
+.field{width:100%;padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:#fff;font:inherit;margin:6px 0 10px}
+.zoom{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:6px}
+.zoom button{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--card);font-size:20px;font-weight:700}
+.placebar{position:absolute;z-index:500;left:52px;right:10px;top:10px;background:var(--leaf);color:#fff;border-radius:12px;padding:9px 12px;font-weight:700;font-size:13px;display:none;gap:8px;align-items:center}
+.placebar.on{display:flex}.placebar span{flex:1}
+.placebar button{border:0;border-radius:8px;padding:6px 10px;font-weight:700;background:#fff;color:var(--leaf)}
+.hscroll{display:flex;gap:6px;overflow-x:auto;padding:8px 0 2px;scrollbar-width:none}.hscroll::-webkit-scrollbar{display:none}
+.land{fill:#efe6cd;stroke:#b9ad8c;stroke-width:1}
+.ghat{vector-effect:non-scaling-stroke;fill:none;stroke:#3f7a4f;stroke-opacity:.35;stroke-linecap:round;stroke-linejoin:round}
+.city{fill:#7b735f}.cityt{fill:#7b735f;font:500 10px "DM Sans",sans-serif}
+.gt{fill:#2c5a3a;font:700 11px "DM Sans",sans-serif;letter-spacing:.2em;opacity:.7}
+.pin{stroke:#fff;cursor:pointer}.pint{fill:#fff;font:700 10px "DM Sans",sans-serif;text-anchor:middle;pointer-events:none}
+/* sheet */
+#sheet{position:fixed;inset:0;background:#1c2a2088;display:none;align-items:flex-end;justify-content:center;z-index:9}
+#sheet.on{display:flex}
+#sheet .in{background:var(--paper);width:100%;max-width:720px;max-height:92vh;overflow:auto;border-radius:22px 22px 0 0;padding:6px 14px 20px}
+#sheet .x{display:block;margin:6px auto 0;border:0;background:var(--line);width:54px;height:6px;border-radius:9px}
+.search{width:100%;padding:11px 14px;border-radius:14px;border:1px solid var(--line);background:var(--card);font:inherit;margin-top:8px}
+.empty{text-align:center;color:var(--mute);padding:22px 10px;font-size:14px}
+#toast{position:fixed;left:50%;bottom:86px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 16px;border-radius:99px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .2s;z-index:20;max-width:90vw;text-align:center}
+#toast.on{opacity:1}
+@media (prefers-reduced-motion:reduce){.ring,.spin{animation:none}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Vanaushadhi<small>Sahyadri · Western Ghats</small></h1>
+  <button class="gear" id="gear" aria-label="Settings">⚙️</button>
+  <select id="lang" aria-label="Language for scan results">
+    <option value="English">English</option><option value="Marathi">मराठी</option><option value="Hindi">हिन्दी</option>
+    <option value="Kannada">ಕನ್ನಡ</option><option value="Malayalam">മലയാളം</option><option value="Tamil">தமிழ்</option>
+  </select>
+</header>
+<main>
+  <section class="view" id="v-scan">
+    <div class="cam" id="cam"><video id="vid" playsinline muted autoplay></video><div class="frame"></div>
+      <button class="start" id="camstart"><span>📷</span>Tap to open camera</button>
+      <button class="snap" id="snap" aria-label="Take photo"></button><span class="gps" id="gps">📍 …</span></div>
+    <div class="alt"><label class="btn ghost sm" id="pick">🖼️ Choose a photo<input type="file" id="fgal" accept="image/*"></label></div>
+    <div id="scanout"></div>
+    <div id="recent"></div>
+  </section>
+
+  <section class="view" id="v-map">
+    <div class="hscroll" id="mapcat"></div>
+    <div class="hscroll" id="mapparts"></div>
+    <div class="mapbox">
+      <div id="map"></div>
+      <div class="placebar" id="placebar"><span id="placetxt">Tap where you found it</span><button id="placeok" hidden>Save here</button><button id="placeno">✕</button></div>
+    </div>
+    <div id="mapsum"></div>
+  </section>
+
+  <section class="view" id="v-body">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:4px">
+      <h2 style="font-size:20px">Tap a body part</h2>
+      <div class="seg" id="sex"><button data-s="f">♀ Female</button><button data-s="m">♂ Male</button></div>
+    </div>
+    <div class="bodywrap">
+      <div id="bodyfig"></div>
+      <div class="chips" id="bodychips"></div>
+    </div>
+    <div id="bodyout"></div>
+  </section>
+
+  <section class="view" id="v-plants">
+    <div class="hscroll" id="libcat"></div>
+    <input class="search" id="q" placeholder="Search plant, use or body part" autocomplete="off">
+    <div id="liblist"></div>
+  </section>
+</main>
+<nav>
+  <a href="#scan" data-v="scan"><span>📷</span>Scan</a>
+  <a href="#map" data-v="map"><span>📍</span>Map</a>
+  <a href="#body" data-v="body"><span>🧍</span>Body</a>
+  <a href="#plants" data-v="plants"><span>🌿</span>Plants</a>
+</nav>
+<div id="sheet"><div class="in"><button class="x" id="sheetx" aria-label="Close"></button><div id="sheetbody"></div></div></div>
+<div id="toast"></div>
+
+<script src="lib/leaflet.js"></script>
+<script src="lib/leaflet.markercluster.js"></script>
+<script>
+"use strict";
+/* ---------- reference tables ---------- */
+// id: [icon, label, x, y] — x,y on the 200x440 figure; null = whole-body system
+const PARTS={
+ brain:['🧠','Brain & memory',100,24],eyes:['👁️','Eyes',89,38],ears:['👂','Ears',127,40],nose:['👃','Nose & sinus',100,46],
+ mouth:['🦷','Mouth & teeth',100,57],throat:['🗣️','Throat',100,73],hair:['💇','Hair & scalp',117,13],
+ lungs:['🫁','Lungs & breathing',82,112],heart:['🫀','Heart',113,118],liver:['🟤','Liver',85,147],
+ stomach:['🥣','Stomach & digestion',104,162],kidneys:['💧','Kidneys & urinary',121,176],repro:['🌸','Reproductive',100,205],
+ joints:['🦵','Joints & knees',82,318],bones:['🦴','Bones',118,266],muscles:['💪','Muscles',47,140],skin:['✋','Skin & wounds',38,222],
+ blood:['🩸','Blood & pressure',null,null],immunity:['🛡️','Immunity & fever',null,null],nerves:['⚡','Nerves & sleep',null,null]};
+const USED={leaf:['🍃','Leaf'],root:['🥕','Root'],bark:['🌳','Bark'],wood:['🪵','Wood'],flower:['🌼','Flower'],fruit:['🍈','Fruit'],seed:['🌰','Seed'],stem:['🎋','Stem'],rhizome:['🥔','Rhizome'],whole:['🌿','Whole plant'],resin:['🍯','Resin / gum'],latex:['🥛','Latex']};
+const PREP={decoction:['♨️','Boil in water'],infusion:['🍵','Steep / soak'],paste:['🥣','Grind to paste'],juice:['🧃','Squeeze juice'],powder:['🧂','Dry & powder'],oil:['🫙','Oil'],raw:['🤲','Use fresh'],steam:['🌫️','Steam'],poultice:['🩹','Warm poultice'],ash:['🔥','Burn / ash']};
+const ROUTE={drink:['🥤','Drink'],eat:['🍽️','Eat'],apply:['✋','Apply on skin'],inhale:['👃','Inhale'],gargle:['💦','Gargle'],chew:['😬','Chew'],wash:['🚿','Wash / rinse'],drops:['💧','Drops']};
+const COS={dye:['🎨','Colour & dye'],hair:['💇','Hair care'],skin:['🧴','Skin care'],soap:['🫧','Soap & wash'],fragrance:['🌸','Fragrance'],other:['✨','Other use']};
+
+/* ---------- seed library: Western Ghats, Ayurveda & folk ---------- */
+// [name, scientific, local, uses[[part,effect,used,prep,route]], cosmetic[[type,color,note]], caution, toxic]
+const LIB=[
+['Tulsi','Ocimum tenuiflorum','तुळस',[['lungs','Cough and cold','leaf','decoction','drink'],['throat','Sore throat','leaf','raw','chew'],['immunity','Fever, resistance','leaf','infusion','drink']],[['skin','','Leaf paste on pimples']],''],
+['Neem','Azadirachta indica','कडुनिंब',[['skin','Itching, boils, infection','leaf','paste','apply'],['mouth','Gum and tooth care','stem','raw','chew'],['blood','Blood purifier','leaf','juice','drink']],[['hair','','Leaf-water rinse for dandruff']],'By mouth: not in pregnancy or for small children'],
+['Turmeric (Halad)','Curcuma longa','हळद',[['joints','Swelling and pain','rhizome','paste','apply'],['skin','Cuts and wounds','rhizome','powder','apply'],['throat','Cough (in warm milk)','rhizome','powder','drink']],[['dye','#e0a100','Yellow dye for cloth and food'],['skin','','Face and body pack (ubtan)']],''],
+['Adulsa (Vasaka)','Justicia adhatoda','अडुळसा',[['lungs','Cough, asthma, phlegm','leaf','juice','drink']],[],'Avoid in pregnancy'],
+['Gulvel (Guduchi)','Tinospora cordifolia','गुळवेल',[['immunity','Fever, resistance','stem','decoction','drink'],['liver','Jaundice support','stem','juice','drink'],['joints','Gout, arthritis','stem','decoction','drink']],[],''],
+['Hirda (Haritaki)','Terminalia chebula','हिरडा',[['stomach','Constipation, digestion','fruit','powder','eat'],['mouth','Mouth ulcers','fruit','decoction','gargle']],[['dye','#6b5a2a','Tannin: yellow-brown, black with iron']],'Avoid in pregnancy'],
+['Behda (Bibhitaki)','Terminalia bellirica','बेहडा',[['throat','Hoarse voice, cough','fruit','powder','eat'],['eyes','Eye wash (Triphala water)','fruit','infusion','wash']],[['hair','','Fruit in hair oils']],''],
+['Awla (Amla)','Phyllanthus emblica','आवळा',[['immunity','Rejuvenating tonic','fruit','raw','eat'],['stomach','Acidity','fruit','powder','eat'],['eyes','Eye tonic','fruit','juice','drink']],[['hair','','Hair oil: strengthens, darkens']],''],
+['Arjun','Terminalia arjuna','अर्जुन',[['heart','Heart tonic','bark','decoction','drink'],['bones','Fracture healing','bark','paste','apply']],[],'With heart medicines, ask a doctor first'],
+['Nirgudi','Vitex negundo','निर्गुडी',[['joints','Joint pain, swelling','leaf','poultice','apply'],['muscles','Sprain, body ache','leaf','oil','apply'],['nose','Blocked nose, headache','leaf','steam','inhale']],[],''],
+['Shatavari','Asparagus racemosus','शतावरी',[['repro',"Women's tonic, milk flow",'root','powder','drink'],['stomach','Acidity, ulcers','root','powder','drink']],[],''],
+['Sarpagandha','Rauvolfia serpentina','सर्पगंधा',[['blood','High blood pressure','root','powder','eat'],['nerves','Sleeplessness, anxiety','root','powder','eat']],[],'Very strong: only under a vaidya or doctor. Endangered — never uproot.',1],
+['Brahmi (Mandukparni)','Centella asiatica','ब्राह्मी',[['brain','Memory, calm mind','leaf','juice','drink'],['skin','Wound healing','leaf','paste','apply'],['nerves','Restful sleep','leaf','infusion','drink']],[['skin','','Leaf extract in skin creams']],''],
+['Kokum','Garcinia indica','कोकम',[['stomach','Acidity, body heat','fruit','infusion','drink'],['skin','Cracked heels, burns','seed','oil','apply']],[['dye','#8e1b3a','Red-purple food colour'],['skin','','Kokum butter in balms']],''],
+['Shikekai','Senegalia rugata','शिकेकाई',[['hair','Dandruff, lice','fruit','powder','wash']],[['hair','','Pod powder: natural shampoo']],''],
+['Ritha (Soapnut)','Sapindus trifoliatus','रिठा',[['hair','Clean scalp','fruit','infusion','wash']],[['soap','','Washes hair, wool, silk, jewellery']],'Keep out of eyes'],
+['Mehndi (Henna)','Lawsonia inermis','मेंदी',[['skin','Burning feet, heat','leaf','paste','apply']],[['dye','#b5521b','Orange-red on skin, hair, nails'],['hair','','Conditions and colours hair']],''],
+['Palash','Butea monosperma','पळस',[['skin','Itching, rashes','flower','infusion','wash']],[['dye','#f07d1a','Flowers: orange Holi colour']],''],
+['Karanj','Pongamia pinnata','करंज',[['skin','Eczema, scabies','seed','oil','apply'],['mouth','Tooth cleaning twig','stem','raw','chew'],['joints','Rheumatic pain','seed','oil','apply']],[['soap','','Seed oil in soaps']],'Oil is for external use only'],
+['Bel','Aegle marmelos','बेल',[['stomach','Diarrhoea, dysentery','fruit','raw','eat']],[],''],
+['Jambhul','Syzygium cumini','जांभूळ',[['blood','High blood sugar','seed','powder','eat'],['mouth','Bleeding gums','bark','decoction','gargle']],[['dye','#4b2a5e','Purple fruit stain']],''],
+['Korphad (Aloe)','Aloe vera','कोरफड',[['skin','Burns, sunburn','leaf','raw','apply'],['stomach','Constipation','leaf','juice','drink']],[['skin','','Gel moisturiser'],['hair','','Gel conditioner']],'Do not drink in pregnancy'],
+['Kalmegh','Andrographis paniculata','कालमेघ',[['liver','Jaundice, liver care','whole','decoction','drink'],['immunity','Fever','whole','decoction','drink']],[],'Avoid in pregnancy'],
+['Maka (Bhringraj)','Eclipta prostrata','माका',[['hair','Hair fall, greying','leaf','oil','apply'],['liver','Liver tonic','leaf','juice','drink']],[['dye','#1d1d1d','Black hair dye']],''],
+['Punarnava','Boerhavia diffusa','पुनर्नवा',[['kidneys','Swelling, water retention','root','decoction','drink']],[],''],
+['Gokhru','Tribulus terrestris','गोखरू',[['kidneys','Burning urine, stones','fruit','decoction','drink']],[],''],
+['Hadjod','Cissus quadrangularis','हाडजोड',[['bones','Fracture healing','stem','paste','apply']],[],'Raw stem irritates the mouth'],
+['Kuda (Kutaj)','Holarrhena pubescens','कुडा',[['stomach','Dysentery, loose motions','bark','decoction','drink']],[],''],
+['Dagadipala','Tridax procumbens','दगडीपाला',[['skin','Stops bleeding from cuts','leaf','juice','apply']],[],''],
+['Miri (Black pepper)','Piper nigrum','मिरी',[['throat','Cough, phlegm (with honey)','fruit','powder','eat'],['stomach','Appetite, gas','fruit','powder','eat']],[],''],
+['Ale (Ginger)','Zingiber officinale','आले',[['stomach','Nausea, indigestion','rhizome','juice','drink'],['throat','Cold and cough','rhizome','decoction','drink']],[],''],
+['Vekhand (Vacha)','Acorus calamus','वेखंड',[['brain','Speech, memory','rhizome','powder','eat'],['nose','Cold, headache','rhizome','paste','apply']],[],'Tiny doses only, under guidance. Not in pregnancy.',1],
+['Chandan (Sandalwood)','Santalum album','चंदन',[['skin','Heat rash, burning','wood','paste','apply']],[['fragrance','','Perfume, incense'],['skin','','Cooling face paste']],'Protected tree — never cut'],
+['Patang (Sappanwood)','Biancaea sappan','पतंग',[['blood','Blood purifier','wood','decoction','drink']],[['dye','#c0273d','Red dye; pink herbal water in Kerala']],''],
+['Neel (Indigo)','Indigofera tinctoria','नीळ',[['hair','Premature greying','leaf','oil','apply']],[['dye','#27408b','Blue cloth dye; black hair with henna']],''],
+['Shendri (Kamala)','Mallotus philippensis','शेंदरी',[['skin','Ringworm','fruit','powder','apply']],[['dye','#e2571e','Orange-red silk dye from fruit powder']],'Not to be eaten without guidance']
+].map(r=>({name:r[0],sci:r[1],local:r[2],uses:r[3].map(u=>({part:u[0],effect:u[1],used:u[2],prep:u[3],route:u[4]})),cos:r[4].map(c=>({type:c[0],color:c[1],note:c[2]})),caution:r[5],toxic:!!r[6],lib:true}));
+
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ls={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),2600)}
+const partsOf=p=>[...new Set((p.uses||[]).map(u=>u.part).filter(k=>PARTS[k]))];
+const isMed=p=>(p.uses||[]).length>0, isCos=p=>(p.cos||[]).length>0;
+const okHex=c=>/^#[0-9a-f]{6}$/i.test(c||'');
+const fmtLoc=(a,b)=>Math.abs(a).toFixed(4)+'°'+(a<0?'S':'N')+', '+Math.abs(b).toFixed(4)+'°'+(b<0?'W':'E');
+
+/* ---------- body figure ---------- */
+function figure(sex,active,opts){
+  opts=opts||{};const act=new Set(active||[]);
+  const sys=[...act].some(k=>PARTS[k]&&PARTS[k][2]==null);
+  const torso=sex==='m'?'M58,84 Q100,74 142,84 L132,150 Q128,182 130,216 L70,216 Q72,182 68,150 Z':'M66,84 Q100,76 134,84 L122,146 Q117,162 135,216 L65,216 Q83,162 78,146 Z';
+  const sh=sex==='m'?[57,143]:[65,135];
+  let s='<svg class="fig'+(sys?' sys':'')+'" viewBox="0 0 200 440" role="img" aria-label="Body">';
+  if(sex==='f')s+='<path class="hairf" d="M68,40 Q66,4 100,6 Q134,4 132,40 L136,82 Q118,70 118,50 L82,50 Q82,70 64,82 Z"/>';
+  else s+='<path class="hairf" d="M74,30 Q76,8 100,8 Q124,8 126,30 Q112,18 100,20 Q88,18 74,30 Z"/>';
+  s+='<circle class="b" cx="100" cy="38" r="25"/><rect class="b" x="91" y="58" width="18" height="26" stroke-width="0"/>'
+   +'<path class="b" d="'+torso+'" stroke-width="2"/>'
+   +'<path class="b" d="M'+sh[0]+',92 L46,158 L38,224" fill="none" stroke-width="17" style="fill:none"/>'
+   +'<path class="b" d="M'+sh[1]+',92 L154,158 L162,224" fill="none" stroke-width="17" style="fill:none"/>'
+   +'<path class="b" d="M84,214 L82,318 L80,418" stroke-width="24" style="fill:none"/>'
+   +'<path class="b" d="M116,214 L118,318 L120,418" stroke-width="24" style="fill:none"/>';
+  if(sex==='m')s+='<path class="hairf" d="M74,30 Q76,8 100,8 Q124,8 126,30 Q112,18 100,20 Q88,18 74,30 Z"/>';
+  for(const k in PARTS){const p=PARTS[k];if(p[2]==null)continue;const on=act.has(k);
+    if(!on&&!opts.pick)continue;
+    if(on)s+='<circle class="ring" cx="'+p[2]+'" cy="'+p[3]+'" r="9"/>';
+    s+='<circle class="dot'+(on?' on':'')+'" cx="'+p[2]+'" cy="'+p[3]+'" r="'+(on?7:4.5)+'"/>';
+    if(opts.pick)s+='<circle class="hit" data-part="'+k+'" cx="'+p[2]+'" cy="'+p[3]+'" r="11"><title>'+p[1]+'</title></circle>';
+  }
+  return s+'</svg>';
+}
+
+/* ---------- plant card (the infographic) ---------- */
+function step(tbl,k){const t=tbl[k]||['•',k||''];return '<div class="step"><i>'+t[0]+'</i>'+esc(t[1])+'</div>'}
+function card(p,o){
+  o=o||{};const sex=ls.get('van_sex','f');
+  let h='<div class="pc"><div class="pc-top">'+(p.thumb||o.img?'<img alt="" src="'+esc(o.img||p.thumb)+'">':'')+'<div><h2>'+esc(p.name)+'</h2>'
+   +(p.local?'<div class="loc">'+esc(p.local)+'</div>':'')+(p.sci?'<div class="sci">'+esc(p.sci)+'</div>':'')+'<div class="tags">'
+   +(isMed(p)?'<span class="tag">✚ Medicinal</span>':'')+(isCos(p)?'<span class="tag c">🎨 Cosmetic &amp; colour</span>':'')
+   +(p.toxic?'<span class="tag w">☠ Handle with care</span>':'')+(p.conf?'<span class="tag" style="background:#eee8d6;color:#6c7568">'+Math.round(p.conf)+'% sure</span>':'')+'</div></div></div>';
+  if(p.caution||p.toxic)h+='<div class="warn"><span>⚠️</span><span>'+esc(p.caution||'Can be harmful. Do not use without expert guidance.')+'</span></div>';
+  if(p.lookalikes)h+='<div class="warn" style="background:#fff7df;color:#6b4e00"><span>👀</span><span>Looks like: '+esc(p.lookalikes)+'</span></div>';
+  if(isMed(p)){
+    h+='<div class="sec"><h3>✚ Medicinal — where it helps, how to use</h3><div class="medgrid"><div>'+figure(sex,partsOf(p))+'</div><div>';
+    for(const u of p.uses){const bp=PARTS[u.part]||['•',u.part||''];
+      h+='<div class="use"><div class="bp">'+bp[0]+' '+esc(bp[1])+'</div><b>'+esc(u.effect)+'</b><div class="flow">'+step(USED,u.used)+'<span class="arr">→</span>'+step(PREP,u.prep)+'<span class="arr">→</span>'+step(ROUTE,u.route)+'</div>'+(u.how?'<div class="how">'+esc(u.how)+'</div>':'')+'</div>';}
+    h+='</div></div></div>';
+  }
+  if(isCos(p)){
+    h+='<div class="sec cos"><h3>🎨 Cosmetic, colour &amp; other uses</h3>';
+    for(const c of p.cos){const t=COS[c.type]||COS.other;h+='<div class="cosrow"><i>'+t[0]+'</i>'+(okHex(c.color)?'<span class="sw" style="background:'+c.color+'"></span>':'')+'<div><b>'+esc(t[1])+'</b><div class="how">'+esc(c.note)+'</div></div></div>';}
+    h+='</div>';
+  }
+  if(!isMed(p)&&!isCos(p))h+='<div class="sec"><div class="how">No traditional medicinal or cosmetic use recorded for this one.</div></div>';
+  if(p.lat!=null)h+='<div class="sec"><div class="how">📍 '+fmtLoc(p.lat,p.lon)+(p.at?' · '+new Date(p.at).toLocaleDateString():'')+'</div></div>';
+  if(o.actions)h+='<div class="acts">'+o.actions+'</div>';
+  h+='<div class="foot">Traditional Ayurveda and folk knowledge, for study. '+(o.ai?'Photo identification can be wrong — ':'')+'Confirm the plant with a local expert before using it on the body.</div></div>';
+  return h;
+}
+function openSheet(html){$('#sheetbody').innerHTML=html;$('#sheet').classList.add('on')}
+function closeSheet(){$('#sheet').classList.remove('on')}
+$('#sheetx').onclick=closeSheet;$('#sheet').onclick=e=>{if(e.target.id==='sheet')closeSheet()};
+
+/* ---------- storage: this device (export / import in settings) ---------- */
+let sightings=[],storeNote='';
+function onData(){renderRecent();drawPins();renderBody();renderLib()}
+function persist(){try{localStorage.setItem('van_sightings',JSON.stringify(sightings));return true}catch(e){toast('Phone storage is full — export pins from ⚙️');return false}}
+function initStore(){sightings=ls.get('van_sightings',[]);onData()}
+async function saveSighting(s){s.id='p'+Date.now();sightings.unshift(s);if(!persist()){sightings.shift();return false}onData();return true}
+function delSighting(id){sightings=sightings.filter(s=>s.id!==id);persist();onData();closeSheet();toast('Pin removed')}
+
+/* ---------- photo: resize, EXIF GPS ---------- */
+function loadImg(file){return new Promise((res,rej)=>{const u=URL.createObjectURL(file),i=new Image();i.onload=()=>{res(i)};i.onerror=()=>{URL.revokeObjectURL(u);rej(new Error('img'))};i.src=u})}
+function shrink(img,max,q,asBlob){const k=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight)),c=document.createElement('canvas');c.width=Math.round(img.naturalWidth*k);c.height=Math.round(img.naturalHeight*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+  return asBlob?new Promise(r=>c.toBlob(r,'image/jpeg',q)):c.toDataURL('image/jpeg',q)}
+async function exifGps(file){
+  try{
+    const dv=new DataView(await file.slice(0,262144).arrayBuffer());if(dv.getUint16(0)!==0xFFD8)return null;
+    let o=2;while(o+4<dv.byteLength){const m=dv.getUint16(o),len=dv.getUint16(o+2);
+      if(m===0xFFE1&&dv.getUint32(o+4)===0x45786966){
+        const t=o+10,le=dv.getUint16(t)===0x4949,u16=p=>dv.getUint16(p,le),u32=p=>dv.getUint32(p,le);
+        let ifd=t+u32(t+4),gps=0;for(let i=0,n=u16(ifd);i<n;i++){const e=ifd+2+i*12;if(u16(e)===0x8825)gps=t+u32(e+8)}
+        if(!gps)return null;const g={};
+        for(let i=0,n=u16(gps);i<n;i++){const e=gps+2+i*12,tag=u16(e);
+          if(tag===1||tag===3)g[tag]=String.fromCharCode(dv.getUint8(e+8));
+          if(tag===2||tag===4){const p=t+u32(e+8),r=j=>u32(p+j*8)/(u32(p+j*8+4)||1);g[tag]=r(0)+r(1)/60+r(2)/3600}}
+        if(g[2]==null||g[4]==null||(!g[2]&&!g[4]))return null;
+        return {lat:g[1]==='S'?-g[2]:g[2],lon:g[3]==='W'?-g[4]:g[4],src:'photo'};
+      }
+      if((m&0xFF00)!==0xFF00)break;o+=2+len}
+  }catch(e){}
+  return null;
+}
+let fix=null,watching=false;
+function watchGps(){if(watching||!navigator.geolocation)return;watching=true;
+  navigator.geolocation.watchPosition(p=>{fix={lat:p.coords.latitude,lon:p.coords.longitude,acc:p.coords.accuracy,t:Date.now(),src:'gps'};$('#gps').textContent='📍 ±'+Math.round(fix.acc)+' m'},
+    e=>{$('#gps').textContent=e.code===1?'📍 location blocked':'📍 no GPS yet'},{enableHighAccuracy:true,maximumAge:15000,timeout:20000})}
+function liveGps(){return new Promise(res=>{if(fix&&Date.now()-fix.t<120000)return res({lat:fix.lat,lon:fix.lon,src:'gps'});if(!navigator.geolocation)return res(null);
+  const t=setTimeout(()=>res(null),8000);navigator.geolocation.getCurrentPosition(p=>{clearTimeout(t);res({lat:p.coords.latitude,lon:p.coords.longitude,src:'gps'})},()=>{clearTimeout(t);res(null)},{enableHighAccuracy:true,timeout:7500})})}
+
+/* ---------- live camera ---------- */
+let stream=null;
+async function camOn(){
+  watchGps();if(stream)return;
+  try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1440}},audio:false});
+    const v=$('#vid');v.srcObject=stream;await v.play().catch(()=>{});$('#cam').classList.add('live');ls.set('van_cam',1)}
+  catch(e){stream=null;toast(e&&e.name==='NotAllowedError'?'Camera permission was blocked — allow it in the browser settings':'No camera available here — choose a photo instead')}
+}
+function camOff(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}$('#cam').classList.remove('live')}
+$('#camstart').onclick=camOn;
+$('#snap').onclick=()=>{const v=$('#vid');if(!v.videoWidth)return;const c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0);c.toBlob(b=>{if(b)scan(b)},'image/jpeg',.9)};
+document.addEventListener('visibilitychange',()=>{if(document.hidden)camOff();else if(ls.get('van_cam',0)&&$('#v-scan').classList.contains('on'))camOn()});
+
+/* ---------- scan ---------- */
+let pending=null,scanning=false;
+$('#lang').value=ls.get('van_lang','English');$('#lang').onchange=e=>ls.set('van_lang',e.target.value);
+$('#fgal').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)scan(f)};
+function prompt(loc){
+  return 'You are a field botanist and a reference for Ayurveda, Siddha and Indian folk medicine. Region of focus: Sahyadri / Western Ghats of India, then the rest of India and Asia.'
+  +(loc?' The photo was taken near latitude '+loc.lat.toFixed(3)+', longitude '+loc.lon.toFixed(3)+'.':'')
+  +' Identify the plant or other natural thing in the photo and reply with ONLY one JSON object, no other text:\n'
+  +'{"found":true|false,"name":"common name used in India","sci":"scientific name","local":"Marathi name in Devanagari, or regional name","conf":0-100,"lookalikes":"similar-looking species that could be confused, or empty",'
+  +'"uses":[{"part":"one of: '+Object.keys(PARTS).join(', ')+'","effect":"what it helps, max 5 words","used":"one of: '+Object.keys(USED).join(', ')+'","prep":"one of: '+Object.keys(PREP).join(', ')+'","route":"one of: '+Object.keys(ROUTE).join(', ')+'","how":"one short sentence: the traditional way to prepare and use it"}],'
+  +'"cos":[{"type":"one of: '+Object.keys(COS).join(', ')+'","color":"#rrggbb of the colour it gives, or empty","note":"max 10 words"}],"caution":"short safety warning or empty","toxic":true|false}\n'
+  +'Rules: "uses" lists only well-established traditional Ayurveda / folk medicinal uses, most established first, at most 4; empty array if none. "cos" lists cosmetic, dye, colour, soap, fragrance or other everyday uses, at most 3; empty if none. If any part is poisonous or irritant set toxic true and say so in caution. If the photo is not a plant or natural thing, or cannot be identified, set found false. Be honest in conf. Write effect, how, note, caution and lookalikes in '+$('#lang').value+'; keep the code words exactly as listed, in English.';
+}
+async function scan(file){
+  if(scanning)return;scanning=true;document.body.classList.add('has');const out=$('#scanout');pending=null;
+  let img;try{img=await loadImg(file)}catch(e){scanning=false;out.innerHTML='<div class="note">That file could not be opened as a photo.</div>';return}
+  const preview=shrink(img,640,.8),thumb=shrink(img,150,.6);
+  out.innerHTML='<div class="busy"><img alt="" src="'+preview+'"><div class="spin"></div><div><b>Identifying…</b><div class="how">Reading leaf, flower and bark</div></div></div>';
+  const [blob,exif]=await Promise.all([shrink(img,1280,.85,true),exifGps(file)]);
+  const loc=exif||await liveGps();
+  const key=ls.get('van_key','');
+  if(!key){scanning=false;out.innerHTML='<div class="note"><b>One-time setup:</b> plant recognition needs an Anthropic API key. <button class="btn sm" id="needkey" style="margin-top:8px">⚙️ Add key</button></div>';$('#needkey').onclick=openSettings;return}
+  try{
+    const b64=await new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(String(fr.result).split(',')[1]);fr.onerror=rej;fr.readAsDataURL(blob)});
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:ls.get('van_model','claude-sonnet-5-5'),max_tokens:1500,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},{type:'text',text:prompt(loc)}]}]})});
+    if(!resp.ok){const er=new Error('api');er.status=resp.status;try{er.detail=(await resp.json()).error.message}catch(_){}throw er}
+    const r={text:((await resp.json()).content||[]).filter(c=>c.type==='text').map(c=>c.text).join('')};
+    const t=r.text||'',j=JSON.parse(t.slice(t.indexOf('{'),t.lastIndexOf('}')+1));
+    if(!j.found){out.innerHTML='<div class="busy"><img alt="" src="'+preview+'"><div><b>Couldn\'t recognise this</b><div class="how">Try closer, in good light, with one leaf or flower filling the frame.</div></div></div>';scanning=false;return}
+    const p={name:String(j.name||'Unknown plant').slice(0,80),sci:String(j.sci||'').slice(0,80),local:String(j.local||'').slice(0,80),conf:Math.max(0,Math.min(100,+j.conf||0)),lookalikes:String(j.lookalikes||'').slice(0,160),
+      uses:(Array.isArray(j.uses)?j.uses:[]).slice(0,4).map(u=>({part:String(u.part||''),effect:String(u.effect||'').slice(0,60),used:String(u.used||''),prep:String(u.prep||''),route:String(u.route||''),how:String(u.how||'').slice(0,220)})),
+      cos:(Array.isArray(j.cos)?j.cos:[]).slice(0,3).map(c=>({type:String(c.type||'other'),color:okHex(c.color)?c.color:'',note:String(c.note||'').slice(0,120)})),
+      caution:String(j.caution||'').slice(0,220),toxic:!!j.toxic};
+    pending={plant:p,thumb,preview,loc};renderPending();
+  }catch(e){
+    const c=e&&e.status;out.innerHTML='<div class="note">'+(c===401?'The API key was not accepted. Check it in ⚙️ settings.':c===429?'Too many scans just now — wait a minute and try again.':c?'The recognition service said: '+esc(e.detail||('error '+c)):'The scan didn\'t go through. Check the connection and try again.')+'</div>';
+  }
+  scanning=false;
+}
+function renderPending(){
+  if(!pending)return;const l=pending.loc,last=ls.get('van_last',null);let a='';
+  if(pending.saved)a='<span class="tag">✓ Pinned at '+fmtLoc(pending.saved.lat,pending.saved.lon)+'</span><button class="btn ghost sm" data-act="showpin">See on map</button>';
+  else{
+    if(l)a+='<button class="btn" data-act="save">📍 Save pin · '+fmtLoc(l.lat,l.lon)+'</button>';
+    a+='<button class="btn'+(l?' ghost':'')+'" data-act="place">🗺️ '+(l?'Move pin':'Pin it on the map')+'</button>';
+    if(!l&&last)a+='<button class="btn ghost" data-act="last">↩ Same place as last pin</button>';
+  }
+  a+='<button class="btn ghost" data-act="again">📷 Scan another</button>';
+  $('#scanout').innerHTML=card(pending.plant,{img:pending.preview,ai:true,actions:a});
+}
+async function commit(loc){
+  if(!pending||pending.saved)return;const p=pending.plant;
+  const ok=await saveSighting(Object.assign({},p,{thumb:pending.thumb,lat:+loc.lat.toFixed(5),lon:+loc.lon.toFixed(5),locSrc:loc.src||'map',at:Date.now()}));
+  if(ok){pending.saved=loc;ls.set('van_last',{lat:loc.lat,lon:loc.lon});toast('Pinned '+p.name);renderPending()}
+}
+$('#scanout').onclick=e=>{const b=e.target.closest('[data-act]');if(!b||!pending)return;const a=b.dataset.act;
+  if(a==='save')commit(pending.loc);
+  else if(a==='again'){pending=null;document.body.classList.remove('has');$('#scanout').innerHTML='';$('main').scrollTop=0}
+  else if(a==='last')commit(Object.assign({src:'last'},ls.get('van_last')));
+  else if(a==='place')startPlace();
+  else if(a==='showpin'){focusOn(pending.saved);location.hash='map'}};
+function renderRecent(){
+  let h=storeNote?'<div class="note">'+esc(storeNote)+'</div>':'';
+  if(sightings.length){h+='<div class="sub">Recent pins</div>';for(const s of sightings.slice(0,6))h+=rowS(s)}
+  $('#recent').innerHTML=h;
+}
+function rowS(s){return '<button class="row" data-sid="'+esc(s.id)+'">'+(s.thumb?'<img alt="" src="'+esc(s.thumb)+'">':'<span class="ph">🌿</span>')+'<span class="t"><b>'+esc(s.name)+'</b><span>'+partsOf(s).map(k=>PARTS[k][0]).join(' ')+(isCos(s)?' 🎨':'')+' · '+fmtLoc(s.lat,s.lon)+'</span></span></button>'}
+function rowP(p,i,sub){const n=sightings.filter(s=>same(s,p)).length;return '<button class="row" data-lib="'+i+'"><span class="ph">'+(isMed(p)?(USED[p.uses[0].used]||['🌿'])[0]:'🎨')+'</span><span class="t"><b>'+esc(p.name)+(p.local?' · '+esc(p.local):'')+'</b><span>'+esc(sub||p.sci)+'</span></span>'+(n?'<span class="n">📍 '+n+'</span>':'')+'</button>'}
+const norm=s=>String(s||'').toLowerCase().split(/\s+/).slice(0,2).join(' ');
+const same=(a,b)=>a.sci&&b.sci&&norm(a.sci)===norm(b.sci);
+document.addEventListener('click',e=>{
+  const r=e.target.closest('[data-sid]');if(r){const s=sightings.find(x=>x.id===r.dataset.sid);if(s)openSheet(card(s,{actions:'<button class="btn ghost sm" data-go="'+esc(s.id)+'">📍 See on map</button><button class="btn ghost sm" style="border-color:var(--kum);color:var(--kum)" data-del="'+esc(s.id)+'">Remove pin</button>'}));return}
+  const l=e.target.closest('[data-lib]');if(l){const p=LIB[+l.dataset.lib];const n=sightings.filter(s=>same(s,p)).length;openSheet(card(p,{actions:n?'<button class="btn ghost sm" data-plantmap="'+l.dataset.lib+'">📍 '+n+' pinned — see on map</button>':''}));return}
+  const d=e.target.closest('[data-del]');if(d){delSighting(d.dataset.del);return}
+  const g=e.target.closest('[data-go]');if(g){const s=sightings.find(x=>x.id===g.dataset.go);closeSheet();if(s){fPart='';fCat='all';fPlant=null;focusOn(s);location.hash='map'}return}
+  const pm=e.target.closest('[data-plantmap]');if(pm){closeSheet();fPart='';fCat='all';fPlant=LIB[+pm.dataset.plantmap];fit();location.hash='map';renderMapUI();return}
+});
+
+/* ---------- map (Leaflet + OpenStreetMap) ---------- */
+let LM=null,pinLayer=null,placeMk=null,fPart='',fCat='all',fPlant=null,placing=false,placeLoc=null;
+const HOMEV=[[15.6,74.6],6];
+function initMap(){
+  if(LM||!window.L)return;
+  LM=L.map('map').setView(HOMEV[0],HOMEV[1]);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(LM);
+  pinLayer=(L.markerClusterGroup?L.markerClusterGroup({maxClusterRadius:46,showCoverageOnHover:false}):L.layerGroup()).addTo(LM);
+  LM.on('click',e=>{if(!placing)return;placeLoc={lat:e.latlng.lat,lon:e.latlng.lng,src:'map'};$('#placetxt').textContent=fmtLoc(placeLoc.lat,placeLoc.lon);$('#placeok').hidden=false;drawPins()});
+}
+function setVB(){initMap();if(LM)LM.invalidateSize();drawPins()}
+function visible(){return sightings.filter(s=>s.lat!=null&&(fCat==='all'||(fCat==='med'?isMed(s):isCos(s)))&&(!fPart||partsOf(s).includes(fPart))&&(!fPlant||same(s,fPlant)))}
+function drawPins(){
+  if(LM){pinLayer.clearLayers();
+    for(const s of visible())L.circleMarker([s.lat,s.lon],{radius:9,color:'#fff',weight:2,fillColor:isMed(s)?'#1f4a30':'#8a3f7a',fillOpacity:1}).on('click',()=>{if(!placing)openSheet(card(s,{actions:'<button class="btn ghost sm" style="border-color:var(--kum);color:var(--kum)" data-del="'+esc(s.id)+'">Remove pin</button>'}))}).addTo(pinLayer);
+    if(placeMk){placeMk.remove();placeMk=null}
+    if(placeLoc)placeMk=L.circleMarker([placeLoc.lat,placeLoc.lon],{radius:11,color:'#fff',weight:3,fillColor:'#d6951a',fillOpacity:1}).addTo(LM)}
+  renderMapSum();
+}
+function fit(){initMap();if(!LM)return;LM.invalidateSize();const v=visible();if(!v.length)return LM.setView(HOMEV[0],HOMEV[1]);LM.fitBounds(L.latLngBounds(v.map(s=>[s.lat,s.lon])).pad(.3),{maxZoom:14})}
+function focusOn(l){initMap();if(LM){LM.invalidateSize();LM.setView([l.lat,l.lon],15)}}
+function startPlace(){placing=true;placeLoc=pending&&pending.loc?Object.assign({},pending.loc):(fix?{lat:fix.lat,lon:fix.lon,src:'gps'}:null);$('#placebar').classList.add('on');$('#placetxt').textContent=placeLoc?'Tap to move the pin':'Tap where you found it';$('#placeok').hidden=!placeLoc;location.hash='map';setTimeout(()=>{if(placeLoc)focusOn(placeLoc);drawPins()},60)}
+function endPlace(){placing=false;placeLoc=null;$('#placebar').classList.remove('on');drawPins()}
+$('#placeno').onclick=()=>{endPlace();location.hash='scan'};
+$('#placeok').onclick=async()=>{const l=placeLoc;endPlace();if(l){await commit(l);location.hash='scan'}};
+function chipRow(el,items,cur,cb){el.innerHTML=items.map(i=>'<button class="chip'+(i[0]===cur?' on':'')+'" data-k="'+i[0]+'">'+i[1]+'</button>').join('');el.onclick=e=>{const b=e.target.closest('[data-k]');if(b)cb(b.dataset.k)}}
+function renderMapUI(){
+  chipRow($('#mapcat'),[['all','All pins'],['med','✚ Medicinal'],['cos','🎨 Cosmetic & colour']].concat(fPlant?[['plant','✕ '+esc(fPlant.name)]]:[]),fPlant?'plant':fCat,k=>{if(k==='plant'){fPlant=null}else fCat=k;renderMapUI();drawPins()});
+  chipRow($('#mapparts'),[['','All body']].concat(Object.keys(PARTS).map(k=>[k,PARTS[k][0]+' '+PARTS[k][1]])),fPart,k=>{fPart=k;renderMapUI();drawPins()});
+}
+function renderMapSum(){
+  const v=visible(),by={};for(const s of v){const k=norm(s.sci)||s.name;(by[k]=by[k]||{s,n:0}).n++}
+  const top=Object.values(by).sort((a,b)=>b.n-a.n).slice(0,8);
+  let h='<div class="sub">'+v.length+' pin'+(v.length===1?'':'s')+(fPart?' for '+PARTS[fPart][1].toLowerCase():'')+' · '+Object.keys(by).length+' species</div>';
+  if(!window.L)h+='<div class="note">The map could not load — check the connection and reload.</div>';
+  if(!v.length)h+='<div class="empty">'+(sightings.length?'No pins match this filter.':'No pins yet. Scan a plant and save it — it will appear here.')+'</div>';
+  for(const t of top)h+='<button class="row" data-sid="'+esc(t.s.id)+'">'+(t.s.thumb?'<img alt="" src="'+esc(t.s.thumb)+'">':'<span class="ph">🌿</span>')+'<span class="t"><b>'+esc(t.s.name)+'</b><span>'+esc(t.s.sci||'')+'</span></span><span class="n">× '+t.n+'</span></button>';
+  $('#mapsum').innerHTML=h;
+}
+
+/* ---------- settings ---------- */
+function openSettings(){
+  openSheet('<div class="pc"><div class="sec" style="border:0"><h3>Plant recognition key</h3><div class="how">Paste an Anthropic API key (console.anthropic.com → API keys). It is stored only on this phone and sent only to Anthropic when you scan.</div><input class="field" id="keyin" type="password" autocomplete="off" placeholder="sk-ant-…" value="'+esc(ls.get('van_key',''))+'"><button class="btn sm" id="keysave">Save key</button></div>'
+   +'<div class="sec"><h3>Pins on this phone: '+sightings.length+'</h3><div class="how">Pins are kept on this phone. Export them to back up or to merge with a teammate.</div><div class="acts" style="border:0;padding:10px 0 0"><button class="btn ghost sm" id="exp">⬇ Export pins</button><label class="btn ghost sm" id="imp" style="position:relative;overflow:hidden">⬆ Import pins<input type="file" accept="application/json,.json" style="position:absolute;inset:0;opacity:0"></label></div></div></div>');
+  $('#keysave').onclick=()=>{ls.set('van_key',$('#keyin').value.trim());toast('Key saved on this phone');closeSheet()};
+  $('#exp').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(sightings)],{type:'application/json'}));a.download='vanaushadhi-pins-'+new Date().toISOString().slice(0,10)+'.json';a.click()};
+  $('#imp').querySelector('input').onchange=async e=>{try{const arr=JSON.parse(await e.target.files[0].text());if(!Array.isArray(arr))throw 0;const have=new Set(sightings.map(s=>s.id));let n=0;
+    for(const s of arr)if(s&&typeof s.lat==='number'&&typeof s.lon==='number'&&s.name&&!have.has(s.id)){sightings.push(s);n++}
+    sightings.sort((a,b)=>(b.at||0)-(a.at||0));persist();onData();toast(n+' pins added');closeSheet()}catch(_){toast('That file is not a pins export')}};
+}
+$('#gear').onclick=openSettings;
+
+/* ---------- body explorer ---------- */
+let bPart='joints';
+function renderBody(){
+  const sex=ls.get('van_sex','f');
+  document.querySelectorAll('#sex button').forEach(b=>b.classList.toggle('on',b.dataset.s===sex));
+  $('#bodyfig').innerHTML=figure(sex,[bPart],{pick:true});
+  const cnt=k=>LIB.filter(p=>partsOf(p).includes(k)).length;
+  $('#bodychips').innerHTML=Object.keys(PARTS).map(k=>'<button class="chip'+(k===bPart?' on':'')+'" data-part="'+k+'">'+PARTS[k][0]+' '+PARTS[k][1]+'<em>'+cnt(k)+'</em></button>').join('');
+  const lib=LIB.map((p,i)=>[p,i]).filter(x=>partsOf(x[0]).includes(bPart));
+  const pins=sightings.filter(s=>partsOf(s).includes(bPart));
+  const extra=[];for(const s of pins)if(!LIB.some(p=>same(p,s))&&!extra.some(x=>same(x,s)))extra.push(s);
+  let h='<div class="sub">'+PARTS[bPart][0]+' '+PARTS[bPart][1]+' — '+(lib.length+extra.length)+' plants</div>';
+  if(pins.length)h+='<button class="btn" style="width:100%;margin-top:6px" id="bodymap">📍 '+pins.length+' pinned in the field — see where</button>';
+  for(const [p,i] of lib){const u=p.uses.find(u=>u.part===bPart);h+=rowP(p,i,u.effect+' · '+(USED[u.used]||['',''])[1]+' → '+(ROUTE[u.route]||['',''])[1])}
+  for(const s of extra)h+=rowS(s);
+  if(!lib.length&&!extra.length)h+='<div class="empty">No plants listed yet for this part.</div>';
+  $('#bodyout').innerHTML=h;
+  const bm=$('#bodymap');if(bm)bm.onclick=()=>{fPart=bPart;fCat='all';fPlant=null;renderMapUI();location.hash='map';fit()};
+}
+$('#v-body').addEventListener('click',e=>{const p=e.target.closest('[data-part]');if(p){bPart=p.dataset.part;renderBody();$('#bodyout').scrollIntoView({behavior:'smooth',block:'nearest'});return}
+  const s=e.target.closest('#sex button');if(s){ls.set('van_sex',s.dataset.s);renderBody()}});
+
+/* ---------- library ---------- */
+let lCat='all';
+function renderLib(){
+  chipRow($('#libcat'),[['all','All '+LIB.length],['med','✚ Medicinal'],['cos','🎨 Cosmetic & colour']],lCat,k=>{lCat=k;renderLib()});
+  const q=$('#q').value.trim().toLowerCase();
+  const hit=p=>!q||[p.name,p.sci,p.local].concat(p.uses.map(u=>u.effect+' '+(PARTS[u.part]||['',''])[1]),p.cos.map(c=>c.note+' '+(COS[c.type]||['',''])[1])).join(' ').toLowerCase().includes(q);
+  const list=LIB.map((p,i)=>[p,i]).filter(x=>(lCat==='all'||(lCat==='med'?isMed(x[0]):isCos(x[0])))&&hit(x[0]));
+  $('#liblist').innerHTML=list.length?list.map(x=>{const p=x[0];return rowP(p,x[1],lCat==='cos'?p.cos.map(c=>c.note).join(' · '):partsOf(p).map(k=>PARTS[k][0]+' '+PARTS[k][1]).join(' · ')||p.cos.map(c=>c.note).join(' · '))}).join(''):'<div class="empty">Nothing matches. Scan the plant to look it up.</div>';
+}
+$('#q').oninput=renderLib;
+
+/* ---------- routing ---------- */
+const VIEWS=['scan','map','body','plants'];
+function route(){
+  let v=location.hash.slice(1);if(!VIEWS.includes(v))v='scan';
+  if(v!=='map'&&placing)endPlace();
+  VIEWS.forEach(k=>$('#v-'+k).classList.toggle('on',k===v));
+  document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.dataset.v===v));
+  if(v==='map'){renderMapUI();setTimeout(setVB,30)}
+  if(v==='scan'){if(ls.get('van_cam',0))camOn()}else camOff();
+  $('main').scrollTop=0;
+}
+window.addEventListener('hashchange',route);
+renderBody();renderLib();renderRecent();route();initStore();
+</script>
+</body>
+</html>
